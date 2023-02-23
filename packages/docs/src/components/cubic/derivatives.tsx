@@ -1,19 +1,21 @@
 import { isString } from "lodash";
-import { evalT } from "math";
+import { CubicSequence, evalT } from "math";
 import React, { useState } from "react";
 import { Graph } from "../graph/Graph";
-import { BezierCurve } from "../graph/cubic-curve";
-import { Grid } from "../graph/grid";
-import { Line } from "../graph/line";
-import { Mark } from "../graph/Mark";
-import { PointTrail } from "../graph/MarkTrail";
-import { PolyLine } from "../graph/polyline";
+
+import {
+  BezierCurve,
+  PolyLine,
+  Line,
+  Mark,
+  MarkTrail,
+} from "../graph/elements";
 
 export const CubicDerivatives = () => {
   const [t, setT] = useState(0.5);
   const curve: CubicSequence = [0, 0, 1, 2, 2, -2, 3, 0];
-  const curve2: CubicSequence = curve.map((x) => x * -1);
-  const curve3: CubicSequence = curve.map((x) => x - 4);
+  const curve2 = curve.map((x) => x * -1) as CubicSequence;
+  const curve3 = curve.map((x) => x - 4) as CubicSequence;
 
   return (
     <>
@@ -29,14 +31,11 @@ export const CubicDerivatives = () => {
       </p>
 
       <Graph>
-        <Grid />
-
         <PolyLine points={curve} opacity={0.2} weight="light" />
-
         <BezierCurve points={curve} weight="tertiary" shade={0} />
         <BezierCurve points={curve2} weight="secondary" />
         <BezierCurve points={curve3} weight="primary" />
-        <PointTrail points={curve} displayLabel={false} weight="regular" />
+        <MarkTrail points={curve} displayLabel={false} weight="regular" />
 
         <Mark pos={evalT(curve, t)} weight="primary" />
         <Line start={[0, 0]} end={[-1, 1]} arrow />

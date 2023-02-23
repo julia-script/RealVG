@@ -1,5 +1,5 @@
 import { inverseLerp } from "math";
-import { ComputedThemeWeightDefinitions, ThemeWeights } from "./theme-provider";
+import { ComputedThemeWeightDefinitions, ThemeWeights } from "../providers";
 
 export const axisCoordToViewSpace = (
   coord: number,
@@ -34,7 +34,7 @@ export const rangesFromCoordBox = (
 
   const bboxHeight = Math.max(yEnd, yStart) - Math.min(yEnd, yStart);
   const bboxWidth = Math.max(xEnd, xStart) - Math.min(xEnd, xStart);
-  //scale to fit
+
   const xRatio = width / bboxWidth;
   const yRatio = height / bboxHeight;
 
@@ -73,4 +73,3 @@ export interface GraphNodeProps
   weight?: ThemeWeights;
   shade?: 0 | 1 | 2 | 3;
 }
-//  & Partial<ThemeWeightDefinitions> & T

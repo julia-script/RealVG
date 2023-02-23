@@ -1,8 +1,7 @@
 import { round } from "lodash";
 import React from "react";
-import { useGraph } from "./graph-provider";
-import { useTheme } from "./theme-provider";
-import { GraphNodeProps, NumberUnit, NumberUnitPoint } from "./utils";
+import { useGraph, useTheme } from "../providers";
+import { GraphNodeProps, NumberUnit, NumberUnitPoint } from "../utils";
 
 export type MarkProps = {
   pos: NumberUnitPoint;

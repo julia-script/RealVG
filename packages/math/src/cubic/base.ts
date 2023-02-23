@@ -1,5 +1,6 @@
 import { lerp } from "../utils/lerp";
 import { fill } from "lodash";
+import { CubicSequence, Point } from "../types";
 
 export const getVectors = (curve: CubicSequence): QuadraticSequence => {
   const [

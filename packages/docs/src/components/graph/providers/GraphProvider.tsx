@@ -6,16 +6,12 @@ import {
   NumberUnit,
   NumberUnitPoint,
   parseNumberUnit,
-} from "./utils";
+} from "../utils";
 import { createContext } from "react";
-import { isNumber } from "lodash";
 
 type GraphContextProps = {
   width: number;
   height: number;
-  // coordToViewSpace: (pos: [number, number]) => [number, number];
-  // yCoordToViewSpace: (pos: number) => number;
-  // xCoordToViewSpace: (pos: number) => number;
   computeNumber: (nu: NumberUnit, defaultSpace?: "vs" | "cs") => number;
   computeSize: (
     nu: [NumberUnit, NumberUnit],

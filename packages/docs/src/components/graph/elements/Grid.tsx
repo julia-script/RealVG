@@ -1,7 +1,6 @@
 import React from "react";
-import { lerp, inverseLerp } from "math";
-import { useGraph } from "./graph-provider";
-import { Line } from "./line";
+import { useGraph } from "../providers";
+import { Line } from "./Line";
 
 type GridProps = {
   gridStep?: number;

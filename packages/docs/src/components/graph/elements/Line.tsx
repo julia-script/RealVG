@@ -1,12 +1,6 @@
 import React from "react";
-import { useMemo } from "react";
-import { useGraph } from "./graph-provider";
-import {
-  ThemeWeightDefinitions,
-  ThemeWeights,
-  useTheme,
-} from "./theme-provider";
-import { GraphNodeProps, NumberUnitPoint } from "./utils";
+import { GraphNodeProps, NumberUnitPoint } from "../utils";
+import { useGraph, useTheme } from "../providers";
 
 type LineProps = {
   start: NumberUnitPoint;

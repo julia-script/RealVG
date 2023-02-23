@@ -1,8 +1,8 @@
+import { CubicSequence } from "math";
 import React from "react";
 import { useMemo } from "react";
-import { useGraph } from "./graph-provider";
-import { useTheme } from "./theme-provider";
-import { GraphNodeProps } from "./utils";
+import { useGraph, useTheme } from "../providers";
+import { GraphNodeProps } from "../utils";
 
 type BezierCurveProps = {
   points: number[];

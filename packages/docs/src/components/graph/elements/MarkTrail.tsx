@@ -1,6 +1,5 @@
 import React from "react";
 import { Mark, MarkProps } from "./Mark";
-import { useGraph } from "./graph-provider";
 
 const mapPoints = <T,>(
   points: number[],
@@ -13,11 +12,11 @@ const mapPoints = <T,>(
   return newPoints;
 };
 
-export type PointTrailProps = {
+export type MarkTrailProps = {
   points: number[];
 } & Omit<MarkProps, "pos">;
 
-export const PointTrail = ({ points = [], ...rest }: PointTrailProps) => {
+export const MarkTrail = ({ points = [], ...rest }: MarkTrailProps) => {
   return (
     <g>
       {mapPoints(points, (point, i) => {

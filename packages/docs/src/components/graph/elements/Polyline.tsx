@@ -1,8 +1,7 @@
 import React from "react";
 import { useMemo } from "react";
-import { useGraph } from "./graph-provider";
-import { GraphNodeProps } from "./utils";
-import { useTheme } from "./theme-provider";
+import { GraphNodeProps } from "../utils";
+import { useGraph, useTheme } from "../providers";
 
 type PolyLineProps = {
   points: number[];

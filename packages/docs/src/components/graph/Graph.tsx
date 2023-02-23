@@ -1,10 +1,7 @@
-import { inverseLerp } from "math";
-import React, { createContext } from "react";
+import React from "react";
 import { Background } from "./Background";
-import { BBox } from "./bbox";
-import { GraphProvider } from "./graph-provider";
-import { Rect } from "./Rect";
-import { ThemeProvider } from "./theme-provider";
+import { ThemeProvider, GraphProvider } from "./providers";
+import { Grid } from "./grid";
 
 type GraphProps = {
   width?: number;
@@ -12,6 +9,8 @@ type GraphProps = {
   xRange?: [number, number];
   yRange?: [number, number];
   coordBox?: [number, number, number, number];
+  displayBackgrond?: boolean;
+  displayGrid?: boolean;
 } & React.PropsWithChildren<{}>;
 
 export const Graph = ({
@@ -19,12 +18,15 @@ export const Graph = ({
   height = 200,
   coordBox = [-5, 5, 5, -5],
   children,
+  displayBackgrond = true,
+  displayGrid = true,
 }: GraphProps) => {
   return (
     <svg viewBox={`0 0 ${width} ${height}`}>
       <GraphProvider width={width} height={height} coordBox={coordBox}>
         <ThemeProvider>
-          <Background />
+          {displayBackgrond && <Background />}
+          {displayGrid && <Grid />}
           {children}
         </ThemeProvider>
       </GraphProvider>

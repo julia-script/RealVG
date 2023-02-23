@@ -1,13 +1,12 @@
 import { createContext, useCallback, useContext, useMemo } from "react";
-import { useGraph } from "./graph-provider";
+import { useGraph } from "./GraphProvider";
 import React from "react";
-import { NumberUnit } from "./utils";
-import { Rect } from "./rect";
+import { NumberUnit } from "../utils";
 import { isNumber } from "lodash";
 
 type ThemeShades = 0 | 1 | 2 | 3;
 export type ThemeColor = [
-  "primary" | "secondary" | "tertiary" | "body",
+  "primary" | "secondary" | "tertiary" | "body" | "background",
   ThemeShades
 ];
 
@@ -46,7 +45,7 @@ export interface Theme {
     secondary: [string, string, string, string];
     tertiary: [string, string, string, string];
     body: [string, string, string, string];
-    background: string;
+    background: [string, string, string, string];
   };
 
   weights: {
@@ -72,7 +71,7 @@ export const DEFAULT_THEMES: { dark: Theme; light: Theme } = {
       secondary: ["#FF9800", "#E68A00", "#C47600", "#B56D00"],
       tertiary: ["#87C7C4", "#7DB9B6", "#6DA19E", "#618F8D"],
       body: ["#75736F", "#96948F", "#B3B0AA", "#F5F1E9"],
-      background: "#1c1e21",
+      background: ["#1c1e21", "#2c2f33", "#3c4045", "#4c5055"],
     },
     weights: {
       primary: {
@@ -126,7 +125,7 @@ export const DEFAULT_THEMES: { dark: Theme; light: Theme } = {
       secondary: ["#FF9800", "#E68A00", "#C47600", "#B56D00"],
       tertiary: ["#87C7C4", "#7DB9B6", "#6DA19E", "#618F8D"],
       body: ["#96948F", "#DBD8D0", "#F5F1E9", "#FFFBF2"],
-      background: "#FFFBF2",
+      background: ["#FFFBF2", "#F5F1E9", "#DBD8D0", "#96948F"],
     },
     weights: {
       primary: {

@@ -1,11 +1,11 @@
 /**
  * A representation of a single point. Could represent a point in 2D space, a vector or a size for example.
  */
-type Point = [number, number];
+export type Point = [number, number];
 /**
  * A sequence of 4 points, may or may not be interpreted as a cubic curve, depending on the context.
  */
-type CubicSequence = [
+export type CubicSequence = [
   point0X: number,
   point0Y: number,
   point1X: number,
@@ -19,7 +19,7 @@ type CubicSequence = [
 /**
  * A sequence of 3 points, may or may not be a quadratic curve, depending on the context.
  */
-type QuadraticSequence = [
+export type QuadraticSequence = [
   point0X: number,
   point0Y: number,
   point1X: number,
