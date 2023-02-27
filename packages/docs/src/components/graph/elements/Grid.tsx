@@ -1,9 +1,7 @@
-import { round } from "lodash";
+import { isArray, round } from "lodash";
 import React, { useMemo } from "react";
 import { useGraph } from "../providers";
-import { BBoxRect } from "./BBoxRect";
-import { Line } from "./Line";
-import { Rect } from "./Rect";
+import { PolyLine } from "./Polyline";
 import { Text } from "./Text";
 
 type GridProps = {};
@@ -11,7 +9,7 @@ type GridProps = {};
 export const Grid = ({}: GridProps) => {
   const { width, height, visibleCoordBox } = useGraph();
 
-  const { coordStep } = useGraph();
+  const { coordStep, theme } = useGraph();
 
   const [startX, endX] = visibleCoordBox.x;
   const [startY, endY] = visibleCoordBox.y;
@@ -52,31 +50,43 @@ export const Grid = ({}: GridProps) => {
     return steps;
   }, [startY, endY, yGridStep]);
 
+  const gridLinesStyle = useMemo(() => {
+    return {
+      color: theme.grid.lines,
+      width: theme.grid.linesStrokeWidth,
+    };
+  }, [theme]);
+
   return (
     <g>
-      {/* <BBoxRect bbox={coordBox} /> */}
-      <Line weight={"light"} start={[0, startY]} end={[0, endY]} />
-      <Line weight={"light"} start={[startX, 0]} end={[endX, 0]} />
       {ySteps.map((relY, i) => (
         <g key={i}>
-          <Line
-            weight={"extraLight"}
-            start={["0vs", relY]}
-            end={[`${width}vs`, relY]}
+          <PolyLine
+            points={["0vs", relY, `${width}vs`, relY]}
+            {...gridLinesStyle}
           />
-          <Text position={[`0cs`, relY]}>{round(relY, 2)}</Text>
+          <Text pos={[`0cs`, relY]}>{round(relY, 2)}</Text>
         </g>
       ))}
       {xSteps.map((relX, i) => (
         <g key={i}>
-          <Line
-            weight={"extraLight"}
-            start={[relX, "0vs"]}
-            end={[relX, `${height}vs`]}
+          <PolyLine
+            points={[relX, "0vs", relX, `${height}vs`]}
+            {...gridLinesStyle}
           />
-          <Text position={[relX, `0cs`]}>{round(relX, 2)}</Text>
+          <Text pos={[relX, `0cs`]}>{round(relX, 2)}</Text>
         </g>
       ))}
+      <PolyLine
+        points={[0, startY, 0, endY]}
+        color={isArray(theme.grid.axis) ? theme.grid.axis[1] : theme.grid.axis}
+        width={theme.grid.axisStrokeWidth}
+      />
+      <PolyLine
+        points={[startX, 0, endX, 0]}
+        color={isArray(theme.grid.axis) ? theme.grid.axis[0] : theme.grid.axis}
+        width={theme.grid.axisStrokeWidth}
+      />
     </g>
   );
 };

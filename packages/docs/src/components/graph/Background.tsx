@@ -1,16 +1,15 @@
 import React from "react";
-import { useGraph, useTheme } from "./providers";
+import { useGraph } from "./providers";
 import { Rect } from "./elements";
 
 export const Background = () => {
-  const { width, height } = useGraph();
-  const { theme } = useTheme();
-  // return null;
+  const { width, height, theme } = useGraph();
   return (
     <Rect
-      position={["0vs", "0vs"]}
+      pos={["0vs", "0vs"]}
       size={[`${width}vs`, `${height}vs`]}
-      fillColor={theme.colors.background[0]}
+      fill={theme.background}
+      strokeWidth={0}
     />
   );
 };

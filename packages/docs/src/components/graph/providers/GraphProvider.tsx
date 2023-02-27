@@ -1,8 +1,5 @@
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import {
-  axisCoordToViewSpace,
-  rangesFromCoordBox,
-  coordBoxFromRanges,
   NumberUnit,
   NumberUnitPoint,
   parseNumberUnit,
@@ -10,8 +7,9 @@ import {
   BBox,
 } from "../utils";
 import { createContext } from "react";
-import { Rect } from "../elements";
-import { remap } from "math";
+import { Point, remap } from "math";
+import { isArray, isString } from "lodash";
+import { Color, StrokeStyle, Theme } from "../utils/styles";
 
 export type GraphContextProps = {
   width: number;
@@ -20,22 +18,26 @@ export type GraphContextProps = {
 
   computeNumber: (nu: NumberUnit, defaultSpace?: "vs" | "cs") => number;
 
-  computeSizeToCoordSpace: (nu: [number, number]) => [number, number];
+  computeSizeToCoordSpace: (nu: Point) => Point;
 
   computeSize: (
     nu: [NumberUnit, NumberUnit],
     defaultSpace?: "vs" | "cs"
-  ) => [number, number];
+  ) => Point;
   computeCoord: (
     nu: [NumberUnit, NumberUnit],
     defaultSpace?: "vs" | "cs"
-  ) => [number, number];
+  ) => Point;
   computeYCoord: (nu: NumberUnit, defaultSpace?: "vs" | "cs") => number;
   computeXCoord: (nu: NumberUnit, defaultSpace?: "vs" | "cs") => number;
 
+  computeColor: (index: Color) => string;
+  computeDashArray: (strokeStyle: StrokeStyle, strokeWidth: number) => string;
+
   coordBox: BBox;
   visibleCoordBox: BBox;
-  coordStep: [number, number];
+  coordStep: Point;
+  theme: Theme;
 };
 
 const GraphContext = createContext<GraphContextProps>({} as GraphContextProps);
@@ -44,12 +46,13 @@ type GraphProps = {
   graphRef: React.RefObject<SVGSVGElement>;
   width: number;
   height: number;
-  coordStep: [number, number];
+  coordStep: Point;
   coordBox: {
-    y: [number, number];
-    x: [number, number];
+    y: Point;
+    x: Point;
   };
-  padding: [number, number];
+  padding: Point;
+  theme: Theme;
 } & React.PropsWithChildren<{}>;
 
 export const GraphProvider = ({
@@ -60,6 +63,7 @@ export const GraphProvider = ({
   children,
   coordStep,
   padding,
+  theme,
 }: GraphProps) => {
   const visibleCoordBox = useMemo(() => {
     return calculateVisibleCoordBox(
@@ -70,17 +74,25 @@ export const GraphProvider = ({
     );
   }, [coordBox, coordStep, width, height, ...padding]);
 
-  const unitCoordSize = useMemo<[number, number]>(() => {
+  const coordSize = useMemo<Point>(() => {
     const [xStart, xEnd] = visibleCoordBox.x;
     const [yStart, yEnd] = visibleCoordBox.y;
 
     const coordWidth = Math.max(xStart, xEnd) - Math.min(xStart, xEnd);
     const coordHeight = Math.max(yStart, yEnd) - Math.min(yStart, yEnd);
+    return [coordWidth, coordHeight];
+  }, [...visibleCoordBox.x, ...visibleCoordBox.y]);
+
+  const unitCoordSize = useMemo<Point>(() => {
+    const [xStart, xEnd] = visibleCoordBox.x;
+    const [yStart, yEnd] = visibleCoordBox.y;
+
+    const [coordWidth, coordHeight] = coordSize;
     return [
       (width / coordWidth) * Math.sign(xStart - xEnd),
       (height / coordHeight) * Math.sign(yStart - yEnd),
     ];
-  }, [visibleCoordBox]);
+  }, coordSize);
 
   const computeNumber = useCallback(
     (unitValue: NumberUnit, defaultSpace: "vs" | "cs" = "cs") => {
@@ -90,16 +102,13 @@ export const GraphProvider = ({
       }
       return value * unitCoordSize[1];
     },
-    [unitCoordSize]
+    unitCoordSize
   );
 
-  const computeSizeToCoordSpace = useCallback(
-    (coord: [number, number]) => {
-      const [x, y] = coord;
-      return [-x / unitCoordSize[0], -y / unitCoordSize[1]] as [number, number];
-    },
-    [unitCoordSize]
-  );
+  const computeSizeToCoordSpace = useCallback((coord: Point) => {
+    const [x, y] = coord;
+    return [-x / unitCoordSize[0], -y / unitCoordSize[1]] as Point;
+  }, unitCoordSize);
 
   const computeSize = useCallback(
     (unitValue: NumberUnitPoint, defaultSpace: "vs" | "cs" = "cs") => {
@@ -108,9 +117,9 @@ export const GraphProvider = ({
       return [
         xUnit === "vs" ? x : x * unitCoordSize[0],
         yUnit === "vs" ? y : y * unitCoordSize[1],
-      ] as [number, number];
+      ] as Point;
     },
-    [unitCoordSize]
+    unitCoordSize
   );
 
   const computeYCoord = useCallback(
@@ -121,7 +130,7 @@ export const GraphProvider = ({
       }
       return remap(value, ...visibleCoordBox.y, 0, height);
     },
-    [visibleCoordBox, height]
+    [...visibleCoordBox.y, height]
   );
 
   const computeXCoord = useCallback(
@@ -133,7 +142,7 @@ export const GraphProvider = ({
 
       return remap(value, ...visibleCoordBox.x, 0, width);
     },
-    [visibleCoordBox, width]
+    [...visibleCoordBox.x, width]
   );
 
   const computeCoord = useCallback(
@@ -141,9 +150,37 @@ export const GraphProvider = ({
       return [
         computeXCoord(coord[0], defaultSpace),
         computeYCoord(coord[1], defaultSpace),
-      ] as [number, number];
+      ] as Point;
     },
     [computeXCoord, computeYCoord]
+  );
+
+  const computeColor = useCallback(
+    (color: number | string) => {
+      if (isString(color)) {
+        return color;
+      }
+      return theme.palette[color % theme.palette.length];
+    },
+    [theme]
+  );
+
+  const computeDashArray = useCallback(
+    (strokeStyle: StrokeStyle, strokeWidth: number) => {
+      if (isArray(strokeStyle)) {
+        return strokeStyle.map((s) => computeNumber(s)).join(" ");
+      }
+      if (strokeStyle === "dashed") {
+        return `${strokeWidth * 2} ${strokeWidth * 4}`;
+      }
+
+      if (strokeStyle === "dotted") {
+        return `0 ${strokeWidth * 2}`;
+      }
+
+      return "none";
+    },
+    [computeNumber]
   );
 
   return (
@@ -162,9 +199,12 @@ export const GraphProvider = ({
         computeXCoord,
 
         computeSizeToCoordSpace,
+        computeColor,
+        computeDashArray,
 
         coordBox,
         visibleCoordBox,
+        theme,
       }}
     >
       {children}

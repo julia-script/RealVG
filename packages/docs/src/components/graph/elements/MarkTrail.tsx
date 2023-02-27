@@ -1,9 +1,10 @@
+import { Point } from "math";
 import React from "react";
 import { Mark, MarkProps } from "./Mark";
 
 const mapPoints = <T,>(
   points: number[],
-  fn: (point: [number, number], i: number) => T
+  fn: (point: Point, i: number) => T
 ): T[] => {
   const newPoints: T[] = [];
   for (let i = 0; i < points.length; i += 2) {

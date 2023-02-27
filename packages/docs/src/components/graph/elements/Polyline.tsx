@@ -1,24 +1,25 @@
 import React from "react";
 import { useMemo } from "react";
-import { GraphNodeProps, NumberUnit } from "../utils";
-import { useGraph, useTheme } from "../providers";
+import { NumberUnit } from "../utils";
+import { useGraph } from "../providers";
+import { Color, getStrokeDashArray, StrokeStyle } from "../utils/styles";
 
-type PolyLineProps = {
+export type PolyLineProps = {
   points: NumberUnit[];
-} & GraphNodeProps;
+  width?: NumberUnit;
+  color?: Color;
+  fill?: Color;
+  strokeStyle?: StrokeStyle;
+};
 
 export const PolyLine = ({
   points,
-  weight = "regular",
-  shade,
-  ...props
+  width = 4,
+  color = 0,
+  strokeStyle = "solid",
+  fill,
 }: PolyLineProps) => {
-  const { computeCoord, width, height } = useGraph();
-  const { strokeColor, strokeWidth, strokeDashArray } = useTheme(
-    weight,
-    props,
-    shade
-  );
+  const { computeCoord, computeColor, computeNumber } = useGraph();
 
   const pointsString = useMemo(() => {
     let path = "";
@@ -27,14 +28,20 @@ export const PolyLine = ({
       path += `${x} ${y} `;
     }
     return path.trim();
-  }, [points, width, height]);
+  }, [points, computeCoord]);
+  const strokeWidth = computeNumber(width, "vs");
+  const strokeDashArray = useMemo(() => {
+    return getStrokeDashArray(strokeStyle, strokeWidth)
+      .map((x) => computeNumber(x, "vs"))
+      .join(" ");
+  }, [strokeStyle, computeNumber]);
   return (
     <polyline
       points={pointsString}
-      fill="none"
-      stroke={strokeColor}
+      fill={fill ? computeColor(fill) : "none"}
+      stroke={computeColor(color)}
       strokeWidth={strokeWidth}
-      strokeDasharray={strokeDashArray.join(" ")}
+      strokeDasharray={strokeDashArray}
       strokeLinecap="round"
       strokeLinejoin="round"
     />

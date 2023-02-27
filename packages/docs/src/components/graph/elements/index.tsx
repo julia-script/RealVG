@@ -1,6 +1,5 @@
 export * from "./plot";
 
-export * from "./BezierCurve";
 export * from "./Grid";
 export * from "./Line";
 export * from "./Mark";

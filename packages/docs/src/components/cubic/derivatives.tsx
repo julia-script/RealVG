@@ -1,19 +1,48 @@
 import { Graph } from "../graph/Graph";
 import { cubic, inverseLerp, Point, Points2, Points3 } from "math";
 import { quadratic } from "math";
-import React, { useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Mark, Parametric, PolyLine, Rect } from "../graph/elements";
 import { BBoxRect } from "../graph/elements/BBoxRect";
-import { BBox } from "../graph/utils";
+import { BBox, WithPointerEvents } from "../graph/utils";
 import { GraphContextProps } from "../graph/providers";
 
-const useCoordControl = (initial: [number, number]) => {
+const useCoordControl = (
+  initial: Point
+): WithPointerEvents & { pos: Point } => {
+  const [dragging, setDragging] = useState(false);
   const [point, setPoint] = useState(initial);
+  const onPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      (e.target as SVGGElement).setPointerCapture(e.pointerId);
+      setDragging(true);
+    },
+    [setDragging]
+  );
+
+  const onPointerMove = useCallback(
+    (e: React.PointerEvent, graph: GraphContextProps) => {
+      if (!dragging) return;
+      const [offsetX, offsetY] = graph.computeSizeToCoordSpace([
+        e.movementX,
+        e.movementY,
+      ]);
+      setPoint(([x, y]) => [x + offsetX, y + offsetY]);
+    },
+    [dragging, setPoint]
+  );
+
+  const onPointerUp = useCallback((e: React.PointerEvent) => {
+    (e.target as SVGGElement).releasePointerCapture(e.pointerId);
+    setDragging(false);
+  }, []);
+
   return {
     pos: point,
-    onDrag: ([offsetX, offsetY]: Point) => {
-      setPoint(([prevX, prevY]) => [prevX + offsetX, prevY + offsetY]);
-    },
+    interactable: true,
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
   };
 };
 
@@ -33,48 +62,68 @@ class Matrix extends DOMMatrix {
 }
 const useNavigator = (coordBox: BBox = { x: [0, 10], y: [10, 0] }) => {
   const [transform, setTransform] = useState(new DOMMatrix());
-
   const [dragging, setDragging] = useState(false);
-  const x = new DOMPoint(coordBox.x[0], coordBox.y[0]).matrixTransform(
-    transform
-  );
-  const y = new DOMPoint(coordBox.x[1], coordBox.y[1]).matrixTransform(
-    transform
-  );
-  return {
-    coordBox: {
+
+  const x = useMemo(() => {
+    return new DOMPoint(coordBox.x[0], coordBox.y[0]).matrixTransform(
+      transform
+    );
+  }, [transform, ...coordBox.x, ...coordBox.y]);
+  const y = useMemo(() => {
+    return new DOMPoint(coordBox.x[1], coordBox.y[1]).matrixTransform(
+      transform
+    );
+  }, [transform, ...coordBox.x, ...coordBox.y]);
+
+  const outCoordBox = useMemo(() => {
+    const x = new DOMPoint(coordBox.x[0], coordBox.y[0]).matrixTransform(
+      transform
+    );
+    const y = new DOMPoint(coordBox.x[1], coordBox.y[1]).matrixTransform(
+      transform
+    );
+
+    return {
       x: [x.x, y.x],
       y: [x.y, y.y],
-    } as BBox,
-    onPointerDown: (
-      e: React.PointerEvent<SVGSVGElement>,
-      graph: GraphContextProps
-    ) => {
+    } as BBox;
+  }, [transform, ...coordBox.x, ...coordBox.y]);
+
+  const onPointerDown = useCallback(
+    (e: React.PointerEvent) => {
       (e.target as SVGSVGElement).setPointerCapture(e.pointerId);
       setDragging(true);
-      console.log(graph);
     },
-    onPointerMove: (
-      e: React.PointerEvent<SVGSVGElement>,
-      graph: GraphContextProps
-    ) => {
-      if (!dragging) return;
-      const { movementX, movementY } = e;
+    [setDragging]
+  );
 
+  const onPointerMove = useCallback(
+    (e: React.PointerEvent, graph: GraphContextProps) => {
+      if (!dragging) return;
+      const [offsetX, offsetY] = graph.computeSizeToCoordSpace([
+        e.movementX,
+        e.movementY,
+      ]);
       setTransform((prev) => {
-        return prev.translate(
-          ...graph.computeSizeToCoordSpace([-movementX, -movementY])
-        );
-        // return transform;
+        return prev.translate(-offsetX, -offsetY);
       });
     },
-    onPointerUp: (
-      e: React.PointerEvent<SVGSVGElement>,
-      graph: GraphContextProps
-    ) => {
+    [dragging, setTransform]
+  );
+
+  const onPointerUp = useCallback(
+    (e: React.PointerEvent) => {
       (e.target as SVGSVGElement).releasePointerCapture(e.pointerId);
       setDragging(false);
     },
+    [setDragging]
+  );
+
+  return {
+    coordBox: outCoordBox,
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
   };
 };
 export const CubicDerivatives = () => {
@@ -102,55 +151,58 @@ export const CubicDerivatives = () => {
   return (
     <>
       <Graph width={"100%"} height={"400px"} padding={[10, 10]} {...navigator}>
-        <BBoxRect
-          bbox={{
-            x: [0, 10],
-            y: [10, 0],
-          }}
-        />
-
         <PolyLine
-          weight={"tertiary"}
-          points={[...p0.pos, ...p1.pos, ...p2.pos]}
-          strokeDashArray={[0, 2]}
-          strokeWidth={1}
+          color={0}
+          width={2}
+          strokeStyle={"dashed"}
+          points={[...p1.pos, ...p0.pos]}
         />
-        <Parametric
-          weight={"secondary"}
-          strokeWidth={6}
+        <PolyLine
+          color={0}
+          width={2}
+          strokeStyle={"dashed"}
+          points={[...p1.pos, ...p2.pos]}
+        />
+        {/* <Parametric
           tLimits={[0, 1]}
           xy={(t) => {
             return left.at(t);
           }}
+          color={3}
+          width={15}
         />
         <Parametric
-          weight={"tertiary"}
-          strokeWidth={6}
           tLimits={[0, 1]}
           xy={(t) => {
             return right.at(t);
           }}
-        />
+          color={4}
+          width={15}
+        /> */}
         <Parametric
-          weight={"primary"}
           tLimits={[0, 1]}
-          xy={(t) => {
-            return quadCurve.at(t);
-          }}
+          xy={useCallback(
+            (t) => {
+              return quadCurve.at(t);
+            },
+            [quadCurve]
+          )}
+          color={1}
+          width={6}
         />
 
-        <Parametric
-          weight={"primary"}
+        {/* <Parametric
           tLimits={[0, 1]}
           xy={(t) => {
             return cubicCurve.at(t);
           }}
-        />
+        /> */}
 
         <Mark {...p0} />
-        <Mark {...p1} />
+        <Mark {...p1} color={0} component={"🤡"} />
         <Mark {...p2} />
-        <Mark {...p3} />
+        {/* <Mark {...p3} /> */}
+
         {/* <Mark pos={quadCurve.at(quadCurve.extremas()[0])} />
         <Mark pos={quadCurve.at(quadCurve.extremas()[1])} /> */}
       </Graph>
@@ -172,12 +224,12 @@ export const CubicDerivatives = () => {
           />
 
           <Parametric
-            weight={"primary"}
             tLimits={[0, 1]}
             xy={(t) => {
               const [x, _] = quadCurve.at(t);
               return [t, x];
             }}
+            color={4}
           />
 
           {quadCurve.roots()[0].map((t, i) => {
@@ -200,12 +252,12 @@ export const CubicDerivatives = () => {
             }}
           />
           <Parametric
-            weight={"primary"}
             tLimits={[0, 1]}
             xy={(t) => {
               const [_, y] = quadCurve.at(t);
               return [t, y];
             }}
+            color={4}
           />
           {quadCurve.roots()[1].map((t, i) => {
             return <Mark key={i} pos={[t, 0]} size={1} />;

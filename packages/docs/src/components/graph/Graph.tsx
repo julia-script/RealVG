@@ -1,27 +1,27 @@
 import React, { useEffect, useLayoutEffect, useState } from "react";
 import { Background } from "./Background";
-import {
-  ThemeProvider,
-  GraphProvider,
-  useGraph,
-  GraphContextProps,
-} from "./providers";
+import { GraphProvider, useGraph, GraphContextProps } from "./providers";
 import { Grid } from "./elements";
 import { debounce, defer, isNumber } from "lodash";
+import { darkTheme, Theme } from "./utils/styles";
+import { Point } from "math";
+import { WithPointerEvents } from "./utils";
 
 type GraphProps = {
   coordBox?: {
-    x: [number, number];
-    y: [number, number];
+    x: Point;
+    y: Point;
   };
-  padding?: [number, number];
+  padding?: Point;
   /**
    * Coord step defines the unit size in coords space
    */
-  coordStep?: [number, number] | number;
+  coordStep?: Point | number;
   displayBackgrond?: boolean;
   displayGrid?: boolean;
-} & PointerEvents &
+
+  theme?: Theme;
+} & WithPointerEvents &
   Omit<
     React.SVGProps<SVGSVGElement>,
     "onPointerMove" | "onPointerDown" | "onPointerUp"
@@ -76,6 +76,7 @@ export const Graph = ({
   children,
   displayBackgrond = true,
   displayGrid = true,
+  theme = darkTheme,
 
   onPointerDown,
   onPointerMove,
@@ -117,18 +118,17 @@ export const Graph = ({
         padding={padding}
         coordStep={isNumber(coordStep) ? [coordStep, coordStep] : coordStep}
         graphRef={graphRef}
+        theme={theme}
       >
-        <ThemeProvider>
-          {displayBackgrond && <Background />}
-          {displayGrid && <Grid />}
-          <EventNet
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-          />
+        {displayBackgrond && <Background />}
+        {displayGrid && <Grid />}
+        <EventNet
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+        />
 
-          {children}
-        </ThemeProvider>
+        {children}
       </GraphProvider>
     </svg>
   );

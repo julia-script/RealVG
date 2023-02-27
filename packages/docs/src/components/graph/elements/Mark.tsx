@@ -1,85 +1,88 @@
-import { round } from "lodash";
-import React from "react";
-import { useGraph, useTheme } from "../providers";
-import { GraphNodeProps, NumberUnit, NumberUnitPoint } from "../utils";
+import React, { useCallback } from "react";
+import { useGraph } from "../providers";
+import { Color } from "../utils/styles";
+import {
+  mapPointerEvent,
+  NumberUnit,
+  NumberUnitPoint,
+  WithPointerEvents,
+} from "../utils";
+import { isNumber, isString } from "lodash";
+import { Text } from "./Text";
+import { Point } from "math";
 
 export type MarkProps = {
   pos: NumberUnitPoint;
   size?: NumberUnit;
+  color?: Color;
   displayLabel?: boolean;
   displayPoint?: boolean;
   labelDirection?: number;
-  onDrag?: (pos: [number, number]) => void;
-  label?: (pos: [number, number]) => string;
-} & GraphNodeProps;
+  component?:
+    | string
+    | ((size: number, color: string, interactable: boolean) => React.ReactNode);
+} & WithPointerEvents;
 
 export const Mark = ({
   pos,
-  size = "12vs",
-  displayLabel = true,
+  size,
+  color = 1,
   displayPoint = true,
-  labelDirection = -Math.PI / 2,
-  label = ([x, y]: [number, number]) => `(${round(x, 3)}, ${round(y, 3)})`,
-  onDrag,
-  weight = "secondary",
-  shade,
-  ...rest
+
+  component = (size, color, interactable) => (
+    <g>
+      {interactable && <circle r={size * 1.5} fill={color} opacity={0.15} />}
+      <circle r={size / 2} fill={color} />
+    </g>
+  ),
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+  interactable,
 }: MarkProps) => {
-  const [dragging, setDragging] = React.useState(false);
-  const { computeCoord, computeNumber, computeSizeToCoordSpace } = useGraph();
-  const { fillColor } = useTheme(weight, rest, shade);
-
-  const computedSize = computeNumber(size);
-
+  const graph = useGraph();
+  const { computeCoord, computeNumber, computeColor } = useGraph();
+  const fillColor = computeColor(color);
+  const computedSize = computeNumber(size || 12, "vs");
   const [absX, absY] = computeCoord(pos);
-  const labelDistance = computedSize / 2 + 10;
-  const labelX = labelDistance * Math.cos(labelDirection);
-  const labelY = labelDistance * Math.sin(labelDirection);
-
   return (
     <g
       transform={`translate(${absX} ${absY})`}
-      onPointerDown={(e) => {
-        (e.target as SVGGElement).setPointerCapture(e.pointerId);
-        setDragging(true);
-      }}
-      onPointerMove={(e) => {
-        if (!dragging) return;
-
-        const [offsetX, offsetY] = computeSizeToCoordSpace([
-          e.movementX, // * xMultiplier,
-          e.movementY, // * yMultiplier,
-        ]);
-
-        onDrag?.([offsetX, offsetY]);
-      }}
-      onPointerUp={(e) => {
-        (e.target as SVGGElement).releasePointerCapture(e.pointerId);
-        setDragging(false);
-      }}
+      onPointerDown={mapPointerEvent(graph, onPointerDown)}
+      onPointerMove={mapPointerEvent(graph, onPointerMove)}
+      onPointerUp={mapPointerEvent(graph, onPointerUp)}
     >
-      {/* {displayLabel && (
-        <text
-          x={labelX}
-          y={labelY}
-          fontSize={fontSize}
-          fontFamily={fontFamily}
-          fontWeight={fontWeight}
-          textAnchor={"middle"}
-          dominantBaseline={"middle"}
-          fill={fillColor}
-        >
-          {label(pos)}
-        </text>
-      )} */}
       {displayPoint && (
-        <g style={onDrag ? { cursor: "pointer" } : {}}>
-          {onDrag && (
-            <circle r={computedSize * 1.5} fill={fillColor} opacity={0.15} />
-          )}
-          <circle r={computedSize / 2} fill={fillColor} />
+        <g style={interactable ? { cursor: "pointer" } : {}}>
+          {isString(component)
+            ? textMark(computedSize, fillColor, !!interactable, component)
+            : component(computedSize, fillColor, !!interactable)}
         </g>
       )}
     </g>
+  );
+};
+
+const textMark = (
+  size: number,
+  color: string,
+  interactable: boolean,
+  text: string
+) => {
+  const fontSize = size * 1.8;
+  return (
+    <>
+      {interactable && <circle r={size * 1.5} fill={color} opacity={0.4} />}
+      <circle r={size * 1.1} fill={color} opacity={0.8} />
+      <Text
+        fontSize={fontSize}
+        textAnchor={"middle"}
+        dy={"0.65em"}
+        dominantBaseline={"middle"}
+        y={-fontSize / 2}
+      >
+        {text}
+      </Text>
+    </>
   );
 };

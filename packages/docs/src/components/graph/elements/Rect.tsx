@@ -1,39 +1,42 @@
 import React from "react";
-import { useGraph, useTheme } from "../providers";
-import {
-  GraphNodeProps,
-  NumberUnit,
-  NumberUnitPoint,
-  parseNumberUnit,
-} from "../utils";
-import { Line } from "./Line";
-import { Mark } from "./Mark";
-import { PolyLine } from "./Polyline";
+import { useGraph } from "../providers";
+import { Color, getStrokeDashArray, StrokeStyle } from "../utils/styles";
+import { NumberUnit, NumberUnitPoint, parseNumberUnit } from "../utils";
+import { Point } from "math";
 
 export type RectProps = {
-  position: NumberUnitPoint;
+  pos: NumberUnitPoint;
   size: NumberUnitPoint;
   radius?: NumberUnit;
-} & GraphNodeProps;
+  color?: Color;
+  fill?: Color;
+  strokeWidth?: NumberUnit;
+  strokeStyle?: StrokeStyle;
+};
 
 export const Rect = ({
-  position,
+  pos,
   size,
   radius = 0,
-  weight = "regular",
-  shade,
-  ...rest
+  color = 0,
+  strokeStyle = "solid",
+  strokeWidth = 2,
+  fill = "none",
 }: RectProps) => {
-  const { computeCoord, computeSize, computeNumber, coordBox } = useGraph();
-  const { fillColor, strokeColor, strokeWidth, strokeDashArray, opacity } =
-    useTheme(weight, rest, shade);
-  const computedRadius = computeNumber(radius);
-  const [_, xUnit] = parseNumberUnit(position[0]);
-  const [__, yUnit] = parseNumberUnit(position[1]);
-  const [___, widthUnit] = parseNumberUnit(size[0]);
-  const [____, heightUnit] = parseNumberUnit(size[1]);
+  const {
+    computeCoord,
+    computeSize,
+    computeNumber,
+    computeColor,
+    computeDashArray,
+  } = useGraph();
 
-  let topLeft = computeCoord(position);
+  const computedRadius = computeNumber(radius);
+
+  const widthUnit = parseNumberUnit(size[0])[1];
+  const heightUnit = parseNumberUnit(size[1])[1];
+
+  let topLeft = computeCoord(pos);
   let [width, height] = computeSize(size);
 
   if (widthUnit === "cs") {
@@ -44,22 +47,21 @@ export const Rect = ({
     height = -height;
   }
 
-  let bottomRight: [number, number] = [topLeft[0] + width, topLeft[1] + height];
+  let bottomRight: Point = [topLeft[0] + width, topLeft[1] + height];
+
+  strokeWidth = computeNumber(strokeWidth, "vs");
 
   return (
-    <g className="rect">
-      <rect
-        x={Math.min(topLeft[0], bottomRight[0])}
-        y={Math.min(topLeft[1], bottomRight[1])}
-        rx={computedRadius}
-        width={Math.abs(width)}
-        height={Math.abs(height)}
-        strokeWidth={strokeWidth}
-        stroke={strokeColor}
-        fill={fillColor}
-        strokeDasharray={strokeDashArray.join(" ")}
-        opacity={opacity}
-      />
-    </g>
+    <rect
+      x={Math.min(topLeft[0], bottomRight[0])}
+      y={Math.min(topLeft[1], bottomRight[1])}
+      rx={computedRadius}
+      width={Math.abs(width)}
+      height={Math.abs(height)}
+      strokeWidth={strokeWidth}
+      fill={computeColor(fill)}
+      stroke={computeColor(color)}
+      strokeDasharray={computeDashArray(strokeStyle, strokeWidth)}
+    />
   );
 };
