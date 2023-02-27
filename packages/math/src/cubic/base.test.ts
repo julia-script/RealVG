@@ -1,4 +1,5 @@
 import { evalT, evalIndependentT } from "./base";
+import { Points4 } from "../types";
 
 describe("cubic", () => {
   /**
@@ -7,7 +8,7 @@ describe("cubic", () => {
    *     |    \_/
    *     |
    */
-  const curve: CubicSequence = [
+  const curve: Points4 = [
     // point0
     0, 0,
 

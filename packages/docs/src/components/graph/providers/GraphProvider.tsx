@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import {
   axisCoordToViewSpace,
   rangesFromCoordBox,
@@ -6,13 +6,22 @@ import {
   NumberUnit,
   NumberUnitPoint,
   parseNumberUnit,
+  calculateVisibleCoordBox,
+  BBox,
 } from "../utils";
 import { createContext } from "react";
+import { Rect } from "../elements";
+import { remap } from "math";
 
-type GraphContextProps = {
+export type GraphContextProps = {
   width: number;
   height: number;
+  graphRef: React.RefObject<SVGSVGElement>;
+
   computeNumber: (nu: NumberUnit, defaultSpace?: "vs" | "cs") => number;
+
+  computeSizeToCoordSpace: (nu: [number, number]) => [number, number];
+
   computeSize: (
     nu: [NumberUnit, NumberUnit],
     defaultSpace?: "vs" | "cs"
@@ -24,56 +33,54 @@ type GraphContextProps = {
   computeYCoord: (nu: NumberUnit, defaultSpace?: "vs" | "cs") => number;
   computeXCoord: (nu: NumberUnit, defaultSpace?: "vs" | "cs") => number;
 
-  yRange: [number, number];
-  xRange: [number, number];
-  coordBox: [number, number, number, number];
+  coordBox: BBox;
+  visibleCoordBox: BBox;
+  coordStep: [number, number];
 };
 
 const GraphContext = createContext<GraphContextProps>({} as GraphContextProps);
 
 type GraphProps = {
+  graphRef: React.RefObject<SVGSVGElement>;
   width: number;
   height: number;
-} & React.PropsWithChildren<{}> &
-  (
-    | {
-        xRange?: [number, number];
-        yRange?: [number, number];
-        coordBox: [number, number, number, number];
-      }
-    | {
-        xRange: [number, number];
-        yRange: [number, number];
-        coordBox?: [number, number, number, number];
-      }
-  );
+  coordStep: [number, number];
+  coordBox: {
+    y: [number, number];
+    x: [number, number];
+  };
+  padding: [number, number];
+} & React.PropsWithChildren<{}>;
 
 export const GraphProvider = ({
+  graphRef,
   width,
   height,
-  xRange,
-  yRange,
   coordBox,
   children,
+  coordStep,
+  padding,
 }: GraphProps) => {
-  const ranges = useMemo(() => {
-    if (xRange && yRange) {
-      return { xRange, yRange, coordBox: coordBoxFromRanges(xRange, yRange) };
-    }
-    if (!coordBox) {
-      throw new Error("Either xRange and yRange or coordBox must be provided");
-    }
-    const ranges = rangesFromCoordBox(coordBox, [width, height]);
-    return { xRange: ranges[0], yRange: ranges[1], coordBox };
-  }, [coordBox, yRange, xRange, width, height]);
+  const visibleCoordBox = useMemo(() => {
+    return calculateVisibleCoordBox(
+      [width, height],
+      coordBox,
+      coordStep,
+      padding
+    );
+  }, [coordBox, coordStep, width, height, ...padding]);
 
   const unitCoordSize = useMemo<[number, number]>(() => {
-    const { xRange, yRange } = ranges;
+    const [xStart, xEnd] = visibleCoordBox.x;
+    const [yStart, yEnd] = visibleCoordBox.y;
+
+    const coordWidth = Math.max(xStart, xEnd) - Math.min(xStart, xEnd);
+    const coordHeight = Math.max(yStart, yEnd) - Math.min(yStart, yEnd);
     return [
-      width / Math.abs(xRange[1] - xRange[0]),
-      height / Math.abs(yRange[1] - yRange[0]),
+      (width / coordWidth) * Math.sign(xStart - xEnd),
+      (height / coordHeight) * Math.sign(yStart - yEnd),
     ];
-  }, [ranges, width, height]);
+  }, [visibleCoordBox]);
 
   const computeNumber = useCallback(
     (unitValue: NumberUnit, defaultSpace: "vs" | "cs" = "cs") => {
@@ -85,14 +92,25 @@ export const GraphProvider = ({
     },
     [unitCoordSize]
   );
+
+  const computeSizeToCoordSpace = useCallback(
+    (coord: [number, number]) => {
+      const [x, y] = coord;
+      return [-x / unitCoordSize[0], -y / unitCoordSize[1]] as [number, number];
+    },
+    [unitCoordSize]
+  );
+
   const computeSize = useCallback(
-    (value: NumberUnitPoint, defaultSpace: "vs" | "cs" = "cs") => {
+    (unitValue: NumberUnitPoint, defaultSpace: "vs" | "cs" = "cs") => {
+      const [x, xUnit] = parseNumberUnit(unitValue[0], defaultSpace);
+      const [y, yUnit] = parseNumberUnit(unitValue[1], defaultSpace);
       return [
-        computeNumber(value[0], defaultSpace),
-        computeNumber(value[1], defaultSpace),
+        xUnit === "vs" ? x : x * unitCoordSize[0],
+        yUnit === "vs" ? y : y * unitCoordSize[1],
       ] as [number, number];
     },
-    [computeNumber]
+    [unitCoordSize]
   );
 
   const computeYCoord = useCallback(
@@ -101,9 +119,9 @@ export const GraphProvider = ({
       if (unit === "vs") {
         return value;
       }
-      return axisCoordToViewSpace(value, ranges.yRange, height);
+      return remap(value, ...visibleCoordBox.y, 0, height);
     },
-    [ranges, height]
+    [visibleCoordBox, height]
   );
 
   const computeXCoord = useCallback(
@@ -113,9 +131,9 @@ export const GraphProvider = ({
         return value;
       }
 
-      return axisCoordToViewSpace(value, ranges.xRange, width);
+      return remap(value, ...visibleCoordBox.x, 0, width);
     },
-    [ranges, width]
+    [visibleCoordBox, width]
   );
 
   const computeCoord = useCallback(
@@ -131,8 +149,10 @@ export const GraphProvider = ({
   return (
     <GraphContext.Provider
       value={{
+        graphRef,
         width,
         height,
+        coordStep,
 
         computeNumber,
         computeSize,
@@ -140,7 +160,11 @@ export const GraphProvider = ({
         computeCoord,
         computeYCoord,
         computeXCoord,
-        ...ranges,
+
+        computeSizeToCoordSpace,
+
+        coordBox,
+        visibleCoordBox,
       }}
     >
       {children}

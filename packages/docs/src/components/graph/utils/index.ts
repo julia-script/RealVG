@@ -1,10 +1,10 @@
-import { inverseLerp } from "math";
+import { inverseLerp, lerp, remap } from "math";
 import { ComputedThemeWeightDefinitions, ThemeWeights } from "../providers";
 
 export const axisCoordToViewSpace = (
   coord: number,
   coordRange: [number, number],
-  viewSpaceSize
+  viewSpaceSize: number
 ) => {
   const [start, end] = coordRange;
   return inverseLerp(start, end, coord) * viewSpaceSize;
@@ -73,3 +73,58 @@ export interface GraphNodeProps
   weight?: ThemeWeights;
   shade?: 0 | 1 | 2 | 3;
 }
+
+export type BBox = {
+  x: [number, number];
+  y: [number, number];
+};
+export const calculateVisibleCoordBox = (
+  viewSize: [number, number],
+
+  coordBox: {
+    x: [number, number];
+    y: [number, number];
+  },
+  stepSize: [number, number],
+  padding: [number, number] = [0, 0]
+): BBox => {
+  const [xPadding, yPadding] = padding;
+
+  const [width, height] = viewSize;
+  let [xStart, xEnd] = coordBox.x;
+  let [yStart, yEnd] = coordBox.y;
+  const [xStep, yStep] = stepSize;
+
+  if (xPadding > 0) {
+    const xMultiplier = (width + xPadding * 2) / width / 2 + 0.5;
+    xStart = lerp(xEnd, xStart, xMultiplier);
+    xEnd = lerp(xStart, xEnd, xMultiplier);
+  }
+
+  if (yPadding > 0) {
+    const yMultiplier = (height + yPadding * 2) / height / 2 + 0.5;
+    yStart = lerp(yEnd, yStart, yMultiplier);
+    yEnd = lerp(yStart, yEnd, yMultiplier);
+  }
+
+  let coordHeight = Math.max(yEnd, yStart) - Math.min(yEnd, yStart);
+  let coordWidth = Math.max(xEnd, xStart) - Math.min(xEnd, xStart);
+
+  const viewRatio = width / height;
+  const coordRatio = coordWidth / xStep / (coordHeight / yStep);
+
+  if (viewRatio < coordRatio) {
+    const ty = coordRatio / viewRatio / 2 + 0.5;
+    return {
+      x: [xStart, xEnd],
+      y: [lerp(yEnd, yStart, ty), lerp(yStart, yEnd, ty)],
+    };
+  }
+
+  const tx = viewRatio / coordRatio / 2 + 0.5;
+
+  return {
+    x: [lerp(xEnd, xStart, tx), lerp(xStart, xEnd, tx)],
+    y: [yStart, yEnd],
+  };
+};

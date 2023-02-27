@@ -5,10 +5,11 @@ import { Rect } from "./elements";
 export const Background = () => {
   const { width, height } = useGraph();
   const { theme } = useTheme();
+  // return null;
   return (
     <Rect
-      size={[`${width}vs`, `${height}vs`]}
       position={["0vs", "0vs"]}
+      size={[`${width}vs`, `${height}vs`]}
       fillColor={theme.colors.background[0]}
     />
   );

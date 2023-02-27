@@ -1,10 +1,10 @@
 import React from "react";
 import { useMemo } from "react";
-import { GraphNodeProps } from "../utils";
+import { GraphNodeProps, NumberUnit } from "../utils";
 import { useGraph, useTheme } from "../providers";
 
 type PolyLineProps = {
-  points: number[];
+  points: NumberUnit[];
 } & GraphNodeProps;
 
 export const PolyLine = ({
@@ -13,7 +13,7 @@ export const PolyLine = ({
   shade,
   ...props
 }: PolyLineProps) => {
-  const { computeCoord } = useGraph();
+  const { computeCoord, width, height } = useGraph();
   const { strokeColor, strokeWidth, strokeDashArray } = useTheme(
     weight,
     props,
@@ -27,7 +27,7 @@ export const PolyLine = ({
       path += `${x} ${y} `;
     }
     return path.trim();
-  }, [points]);
+  }, [points, width, height]);
   return (
     <polyline
       points={pointsString}
