@@ -14,7 +14,7 @@ const squaredDistance = (a: Point, b: Point) => {
 };
 
 const ERROR_TOLERANCE = 0.01;
-const MIN_SPLITS = 6;
+const MIN_SAMPLES = 6;
 export const Parametric = ({ tLimits, xy, ...rest }: ParametricProps) => {
   const points = useMemo(() => {
     const [tMin, tMax] = tLimits;
@@ -35,7 +35,7 @@ export const Parametric = ({ tLimits, xy, ...rest }: ParametricProps) => {
       const realMid = xy(tMid);
       if (
         squaredDistance(realMid, currMid) <= toleranceSquared &&
-        splitCount > MIN_SPLITS
+        splitCount > MIN_SAMPLES
       ) {
         points.push(...realMid);
         return;

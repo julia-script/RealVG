@@ -31,7 +31,7 @@ export const Rect = ({
     computeDashArray,
   } = useGraph();
 
-  const computedRadius = computeNumber(radius);
+  const computedRadius = computeNumber(radius, "vs");
 
   const widthUnit = parseNumberUnit(size[0])[1];
   const heightUnit = parseNumberUnit(size[1])[1];
@@ -62,6 +62,8 @@ export const Rect = ({
       fill={computeColor(fill)}
       stroke={computeColor(color)}
       strokeDasharray={computeDashArray(strokeStyle, strokeWidth)}
+      strokeLinecap="round"
+      strokeLinejoin="round"
     />
   );
 };

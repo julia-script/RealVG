@@ -53,7 +53,15 @@ export const Mark = ({
       onPointerUp={mapPointerEvent(graph, onPointerUp)}
     >
       {displayPoint && (
-        <g style={interactable ? { cursor: "pointer" } : {}}>
+        <g
+          style={
+            interactable
+              ? { cursor: "pointer" }
+              : {
+                  pointerEvents: "none",
+                }
+          }
+        >
           {isString(component)
             ? textMark(computedSize, fillColor, !!interactable, component)
             : component(computedSize, fillColor, !!interactable)}
@@ -73,7 +81,7 @@ const textMark = (
   return (
     <>
       {interactable && <circle r={size * 1.5} fill={color} opacity={0.4} />}
-      <circle r={size * 1.1} fill={color} opacity={0.8} />
+      <circle r={size * 1.1} fill={color} opacity={1} />
       <Text
         fontSize={fontSize}
         textAnchor={"middle"}

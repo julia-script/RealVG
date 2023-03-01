@@ -1,6 +1,6 @@
 import { Point } from "math";
 import React from "react";
-import { BBox } from "../utils";
+import { BBox, normalizeBBox } from "../utils";
 import { Rect, RectProps } from "./Rect";
 
 type BBoxRectProps = {
@@ -8,7 +8,7 @@ type BBoxRectProps = {
 } & Omit<RectProps, "pos" | "size">;
 
 export const BBoxRect = ({ bbox, ...rest }: BBoxRectProps) => {
-  // const
+  bbox = normalizeBBox(bbox);
   const pos: Point = [Math.min(...bbox.x), Math.min(...bbox.y)];
   return (
     <Rect

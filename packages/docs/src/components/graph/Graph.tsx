@@ -1,17 +1,14 @@
-import React, { useEffect, useLayoutEffect, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { Background } from "./Background";
 import { GraphProvider, useGraph, GraphContextProps } from "./providers";
 import { Grid } from "./elements";
 import { debounce, defer, isNumber } from "lodash";
 import { darkTheme, Theme } from "./utils/styles";
 import { Point } from "math";
-import { WithPointerEvents } from "./utils";
+import { BBox, normalizeBBox, WithPointerEvents } from "./utils";
 
 type GraphProps = {
-  coordBox?: {
-    x: Point;
-    y: Point;
-  };
+  coordBox: BBox;
   padding?: Point;
   /**
    * Coord step defines the unit size in coords space
@@ -83,6 +80,7 @@ export const Graph = ({
   onPointerUp,
   ...rest
 }: GraphProps) => {
+  const normalizedCoordBox = useMemo(() => normalizeBBox(coordBox), [coordBox]);
   const graphRef = React.useRef<SVGSVGElement>(null);
 
   const [[width, height], setDimensions] = useState([
@@ -114,7 +112,7 @@ export const Graph = ({
       <GraphProvider
         width={width}
         height={height}
-        coordBox={coordBox}
+        coordBox={normalizedCoordBox}
         padding={padding}
         coordStep={isNumber(coordStep) ? [coordStep, coordStep] : coordStep}
         graphRef={graphRef}

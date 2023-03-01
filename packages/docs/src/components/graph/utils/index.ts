@@ -5,11 +5,21 @@ export type NumberUnit = `${number}vs` | `${number}cs` | number; // view space, 
 
 export type NumberUnitPoint = [NumberUnit, NumberUnit];
 
-export type BBox = {
+export type NormalizedBBox = {
   x: Point;
   y: Point;
 };
+export type BBox = NormalizedBBox | [number, number, number, number];
 
+export const normalizeBBox = (bbox: BBox): NormalizedBBox => {
+  if (Array.isArray(bbox)) {
+    return {
+      x: [bbox[0], bbox[2]],
+      y: [bbox[1], bbox[3]],
+    };
+  }
+  return bbox;
+};
 type Handler = (e: React.PointerEvent, graph: GraphContextProps) => void;
 export type WithPointerEvents = {
   onPointerMove?: Handler;
@@ -39,13 +49,10 @@ export const parseNumberUnit = (
 export const calculateVisibleCoordBox = (
   viewSize: Point,
 
-  coordBox: {
-    x: Point;
-    y: Point;
-  },
+  coordBox: NormalizedBBox,
   stepSize: Point,
   padding: Point = [0, 0]
-): BBox => {
+): NormalizedBBox => {
   const [xPadding, yPadding] = padding;
 
   const [width, height] = viewSize;

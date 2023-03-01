@@ -40,6 +40,7 @@ export const getDerivativeCoefficients = (
   return [a, b];
 };
 
+export const getCos = (x: number): Point => [x, Math.cos(x * 2)];
 export const quadRoots = (a: number, b: number, c: number): number[] => {
   const roots: number[] = [];
   const delta = b * b - 4.0 * a * c;
@@ -158,14 +159,31 @@ export class QuadCurve {
     const xRoots = quadRoots(ax, bx, cx);
     const yRoots = quadRoots(ay, by, cy);
 
-    return [xRoots, yRoots];
+    return [
+      xRoots.filter((t) => t >= 0 && t <= 1),
+      yRoots.filter((t) => t >= 0 && t <= 1),
+    ];
   }
-  extremas(): Point {
-    const [ax, ay, bx, by] = this._coefficients;
+  extremaPoints(): Point[] {
+    return this.extremas().map((t) => this.at(t));
+  }
+
+  extremas(): number[] {
+    const [ax, ay, bx, by] = this.coefficients;
     const xExtrema = -bx / (2 * ax);
     const yExtrema = -by / (2 * ay);
 
-    return [xExtrema, yExtrema];
+    const ts = [];
+
+    if (xExtrema >= 0 && xExtrema <= 1) {
+      ts.push(xExtrema);
+    }
+
+    if (yExtrema >= 0 && yExtrema <= 1) {
+      ts.push(yExtrema);
+    }
+
+    return ts;
   }
   split() {
     return this.splitAt(0.5);
@@ -185,5 +203,21 @@ export class QuadCurve {
     const right = QuadCurve.of(left.p2, [p12x, p12y], this.p2);
 
     return [left, right];
+  }
+
+  bbox() {
+    const extremas = this.extremaPoints();
+    const [p0x, p0y, p1x, p1y, p2x, p2y] = this.points;
+    const [minX, maxX] = [p0x, p2x].sort((a, b) => a - b);
+    const [minY, maxY] = [p0y, p2y].sort((a, b) => a - b);
+
+    const bbox = [
+      Math.min(minX, ...extremas.map((p) => p[0])),
+      Math.min(minY, ...extremas.map((p) => p[1])),
+      Math.max(maxX, ...extremas.map((p) => p[0])),
+      Math.max(maxY, ...extremas.map((p) => p[1])),
+    ] as Points2;
+
+    return bbox;
   }
 }

@@ -1,6 +1,7 @@
 import { isArray, round } from "lodash";
 import React, { useMemo } from "react";
 import { useGraph } from "../providers";
+import { Label } from "./Label";
 import { PolyLine } from "./Polyline";
 import { Text } from "./Text";
 
@@ -65,16 +66,35 @@ export const Grid = ({}: GridProps) => {
             points={["0vs", relY, `${width}vs`, relY]}
             {...gridLinesStyle}
           />
-          <Text pos={[`0cs`, relY]}>{round(relY, 2)}</Text>
+
+          <Label
+            pos={[`0cs`, relY]}
+            content={`${round(relY, 2)}`}
+            distance={6}
+            padding={0}
+            direction={relY ? "w" : "sw"}
+            stroke="none"
+            fill="none"
+          />
         </g>
       ))}
       {xSteps.map((relX, i) => (
-        <g key={i}>
+        <g key={relX}>
           <PolyLine
             points={[relX, "0vs", relX, `${height}vs`]}
             {...gridLinesStyle}
           />
-          <Text pos={[relX, `0cs`]}>{round(relX, 2)}</Text>
+          {relX && (
+            <Label
+              pos={[relX, `0cs`]}
+              content={`${round(relX, 2)}`}
+              direction="s"
+              distance={6}
+              padding={0}
+              stroke="none"
+              fill="none"
+            />
+          )}
         </g>
       ))}
       <PolyLine

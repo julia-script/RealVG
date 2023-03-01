@@ -13,32 +13,69 @@ export const Line = ({
   start,
   end,
   arrow = false,
-  color,
+  color = 0,
+  width = 2,
   ...rest
 }: LineProps) => {
-  const { computeCoord } = useGraph();
+  const { computeCoord, computeColor, computeNumber } = useGraph();
 
   const [x1, y1] = computeCoord(start);
   const [x2, y2] = computeCoord(end);
+  const widthVs = computeNumber(width, "vs");
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  const arrowSize = widthVs * 2.5;
 
-  const angle = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI;
-  const arrowSize = 3;
   return (
     <g>
-      <PolyLine points={[...start, ...end]} color={color} {...rest} />
+      <PolyLine
+        width={width}
+        points={[...start, ...end]}
+        color={color}
+        {...rest}
+      />
 
       {arrow && (
+        // <PolyLine
+        //   points={[
+        //     x2,
+        //     y2,
+        //     x2 - arrowSize * Math.cos(angle - HALF_PI),
+        //     y2 - arrowSize * Math.sin(angle - HALF_PI),
+        //     x2 - arrowSize * Math.cos(angle + HALF_PI),
+        //     y2 - arrowSize * Math.sin(angle + HALF_PI),
+        //   ].map((n) => `${n}vs`)}
+        //   fill={color}
+        // />
         <PolyLine
+          width={width}
+          color={computeColor(color)}
           points={[
-            x2,
-            y2,
-            x2 - arrowSize * Math.cos(((angle - 45) * Math.PI) / 180),
-            y2 - arrowSize * Math.sin(((angle - 45) * Math.PI) / 180),
-            x2 - arrowSize * Math.cos(((angle + 45) * Math.PI) / 180),
-            y2 - arrowSize * Math.sin(((angle + 45) * Math.PI) / 180),
+            `${x2 + arrowSize * Math.cos(angle - Math.PI * 0.75)}vs`,
+            `${y2 + arrowSize * Math.sin(angle - Math.PI * 0.75)}vs`,
+            `${x2}vs`,
+            `${y2}vs`,
+            `${x2 + arrowSize * Math.cos(angle + Math.PI * 0.75)}vs`,
+            `${y2 + arrowSize * Math.sin(angle + Math.PI * 0.75)}vs`,
+
+            // y2 + arrowSize * Math.sin(angle - Math.PI * 0.75),
+            // x2,
+            // y2,
+
+            // x2 + arrowSize * Math.cos(angle + Math.PI * 0.75),
+            // y2 + arrowSize * Math.sin(angle + Math.PI * 0.75),
           ]}
-          fill={color}
         />
+        // <polygon
+        //   points={[
+        //     x2,
+        //     y2,
+        //     x2 + arrowSize * Math.cos(angle - Math.PI * 0.75),
+        //     y2 + arrowSize * Math.sin(angle - Math.PI * 0.75),
+        //     x2 + arrowSize * Math.cos(angle + Math.PI * 0.75),
+        //     y2 + arrowSize * Math.sin(angle + Math.PI * 0.75),
+        //   ].join(",")}
+        //   fill={computeColor(color)}
+        // />
       )}
     </g>
   );

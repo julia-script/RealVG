@@ -4,7 +4,7 @@ import {
   NumberUnitPoint,
   parseNumberUnit,
   calculateVisibleCoordBox,
-  BBox,
+  NormalizedBBox,
 } from "../utils";
 import { createContext } from "react";
 import { Point, remap } from "math";
@@ -34,8 +34,8 @@ export type GraphContextProps = {
   computeColor: (index: Color) => string;
   computeDashArray: (strokeStyle: StrokeStyle, strokeWidth: number) => string;
 
-  coordBox: BBox;
-  visibleCoordBox: BBox;
+  coordBox: NormalizedBBox;
+  visibleCoordBox: NormalizedBBox;
   coordStep: Point;
   theme: Theme;
 };

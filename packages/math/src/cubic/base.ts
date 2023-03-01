@@ -1,6 +1,7 @@
 import { lerp } from "../utils";
 import { fill, max } from "lodash";
 import { Points4, Points2, Point, Points3 } from "../types";
+import { quadRoots } from "../quadratic";
 
 export const getVectors = (curve: Points4): Points3 => {
   const [
@@ -235,4 +236,216 @@ export class CubicCurve {
 
     return [x, y];
   }
+
+  velocityAt(t: number): Point {
+    const [ax, ay, bx, by, cx, cy] = this.coefficients;
+
+    const vx = (3.0 * ax * t + 2.0 * bx) * t + cx;
+    const vy = (3.0 * ay * t + 2.0 * by) * t + cy;
+
+    return [vx, vy];
+  }
+
+  normalAt(t: number): Point {
+    const [vx, vy] = this.velocityAt(t);
+    const mag = Math.sqrt(vx * vx + vy * vy);
+    return [vy / mag, -vx / mag];
+  }
+
+  roots(): [number[], number[]] {
+    const [ax, ay, bx, by, cx, cy] = this.coefficients;
+    const [dx, dy] = this.d;
+
+    const xRoots = solveCubic(ax, bx, cx, dx);
+    const yRoots = solveCubic(ay, by, cy, dy);
+
+    return [xRoots, yRoots];
+  }
+  extremas(): number[] {
+    const [ax, ay, bx, by, cx, cy] = this.coefficients;
+    // derivative coefficients
+
+    const dax = 3 * ax;
+    const day = 3 * ay;
+    const dbx = 2 * bx;
+    const dby = 2 * by;
+
+    const xRoots = quadRoots(dax, dbx, cx);
+    const yRoots = quadRoots(day, dby, cy);
+
+    return [...xRoots, ...yRoots].filter((t) => t >= 0 && t <= 1);
+  }
+  extremaPoints() {
+    return this.extremas().map((t) => this.at(t));
+  }
+
+  bbox(): Points2 {
+    const extremas = this.extremaPoints();
+    const [x0, y0, _, __, ___, ____, x1, y1] = this.points;
+
+    const [dx, dy] = this.d;
+
+    const xMin = Math.min(x0, x1);
+    const xMax = Math.max(x0, x1);
+    const yMin = Math.min(y0, y1);
+    const yMax = Math.max(y0, y1);
+
+    return [
+      Math.min(xMin, ...extremas.map(([x]) => x)),
+      Math.min(yMin, ...extremas.map(([, y]) => y)),
+      Math.max(xMax, ...extremas.map(([x]) => x)),
+      Math.max(yMax, ...extremas.map(([, y]) => y)),
+    ];
+  }
 }
+
+//  IsZero(x)	((x) > -EQN_EPS && (x) < EQN_EPS)
+const EQN_EPS = 1e-9;
+const isZero = (x: number) => x > -EQN_EPS && x < EQN_EPS;
+const nearZero = (n: number, epsilon = 0.00001) => {
+  return Math.abs(n) < epsilon;
+};
+const pushIfInRange = (roots: number[], t: number, tMin = 0, tMax = 1) => {
+  if (t >= tMin && t <= tMax) {
+    roots.push(t);
+  }
+  return roots;
+};
+
+// A real-cuberoots-only function:
+const cuberoot = (v: number) => {
+  if (v < 0) return -Math.pow(-v, 1 / 3);
+  return Math.pow(v, 1 / 3);
+};
+
+export const solveCubic = (a: number, b: number, c: number, d: number) => {
+  // do a check to see whether we even need cubic solving:
+
+  if (nearZero(d)) {
+    // if d is zero, then the cubic equation reduces to a quadratic equation
+    // and we can use quadratic solving.
+    if (nearZero(a)) {
+      // if a is zero, then the quadratic equation reduces to a linear equation
+      if (nearZero(b)) {
+        return [];
+      }
+      // if b is not zero, then the linear equation has a single solution
+      return pushIfInRange([], -c / b);
+    }
+    // if a is not zero, then the quadratic equation has two solutions
+    return quadRoots(a, b, c).filter((t) => t >= 0 && t <= 1);
+  }
+
+  // if d is not zero, then we need to solve the cubic equation
+
+  a /= d;
+  b /= d;
+  c /= d;
+
+  const p = (3 * b - a * a) / 3,
+    p3 = p / 3,
+    q = (2 * a * a * a - 9 * a * b + 27 * c) / 27,
+    q2 = q / 2,
+    discriminant = q2 * q2 + p3 * p3 * p3;
+
+  let u1, v1, root1, root2, root3;
+
+  // three possible real roots:
+  if (discriminant < 0) {
+    const { sqrt, cos, acos, PI } = Math;
+    var mp3 = -p / 3,
+      mp33 = mp3 * mp3 * mp3,
+      r = sqrt(mp33),
+      t = -q / (2 * r),
+      cosphi = t < -1 ? -1 : t > 1 ? 1 : t,
+      phi = acos(cosphi),
+      crtr = cuberoot(r),
+      t1 = 2 * crtr;
+    root1 = t1 * cos(phi / 3) - a / 3;
+    root2 = t1 * cos((phi + 2 * PI) / 3) - a / 3;
+    root3 = t1 * cos((phi + 4 * PI) / 3) - a / 3;
+
+    return [root1, root2, root3]; //.filter((t) => t >= 0 && t <= 1);
+  }
+
+  // three real roots, but two of them are equal:
+  if (discriminant === 0) {
+    u1 = q2 < 0 ? cuberoot(-q2) : -cuberoot(q2);
+    root1 = 2 * u1 - a / 3;
+    root2 = -u1 - a / 3;
+    return [root1, root2].filter((t) => t >= 0 && t <= 1);
+  }
+
+  // one real root, two complex roots
+  var sd = Math.sqrt(discriminant);
+  u1 = cuberoot(sd - q2);
+  v1 = cuberoot(sd + q2);
+  root1 = u1 - v1 - a / 3;
+  if (root1 >= 0 && root1 <= 1) return [root1];
+  return [];
+};
+
+export const solveCubic2 = (a: number, b: number, c: number, d: number) => {
+  /* normal form: x^3 + Ax^2 + Bx + C = 0 */
+
+  a = a / d;
+  b = b / d;
+  c = c / d;
+
+  /*  substitute x = y - A/3 to eliminate quadric term:
+	x^3 +px + q = 0 */
+
+  // sq_A = A * A;
+  // p = 1.0/3 * (- 1.0/3 * sq_A + B);
+  // q = 1.0/2 * (2.0/27 * A * sq_A - 1.0/3 * A * B + C);
+
+  const sq_A = a * a;
+  const p = (1.0 / 3) * ((-1.0 / 3) * sq_A + b);
+  const q = (1.0 / 2) * ((2.0 / 27) * a * sq_A - (1.0 / 3) * a * b + c);
+
+  /* use Cardano's formula */
+
+  let cb_p = p * p * p;
+  const discriminant = q * q + cb_p;
+  const roots = [];
+  if (isZero(discriminant)) {
+    if (isZero(q)) {
+      /* one triple solution */
+      // u = 0;
+      roots.push(0);
+    } else {
+      /* one single and one double solution */
+      const u = cuberoot(-q);
+
+      // return [2 * u, -u];
+      roots.push(2 * u, -u);
+    }
+  } else if (discriminant < 0) {
+    /* Casus irreducibilis: three real solutions */
+
+    const phi = (1.0 / 3) * Math.acos(-q / Math.sqrt(-cb_p));
+    const t = 2 * Math.sqrt(-p);
+
+    roots.push(
+      t * Math.cos(phi),
+      -t * Math.cos(phi + Math.PI / 3),
+      -t * Math.cos(phi - Math.PI / 3)
+    );
+  } else {
+    /* one real solution */
+    const sqrt_disc = Math.sqrt(discriminant);
+    const u = cuberoot(sqrt_disc - q);
+    const v = -cuberoot(sqrt_disc + q);
+
+    roots.push(u + v);
+  }
+
+  /* resubstitute */
+  const sub = (1.0 / 3) * a;
+
+  for (let i = 0; i < roots.length; ++i) {
+    roots[i] -= sub;
+  }
+
+  return roots.filter((t) => t >= 0 && t <= 1);
+};
