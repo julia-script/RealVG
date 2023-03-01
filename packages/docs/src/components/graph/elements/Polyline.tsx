@@ -10,6 +10,7 @@ export type PolyLineProps = {
   color?: Color;
   fill?: Color;
   strokeStyle?: StrokeStyle;
+  strokeDashoffset?: NumberUnit;
 };
 
 export const PolyLine = ({
@@ -17,6 +18,7 @@ export const PolyLine = ({
   width = 4,
   color = 0,
   strokeStyle = "solid",
+  strokeDashoffset = 0,
   fill,
 }: PolyLineProps) => {
   const { computeCoord, computeColor, computeNumber } = useGraph();
@@ -29,17 +31,20 @@ export const PolyLine = ({
     }
     return path.trim();
   }, [points, computeCoord]);
+
   const strokeWidth = computeNumber(width, "vs");
   const strokeDashArray = useMemo(() => {
     return getStrokeDashArray(strokeStyle, strokeWidth)
       .map((x) => computeNumber(x, "vs"))
       .join(" ");
   }, [strokeStyle, computeNumber]);
+
   return (
     <polyline
       points={pointsString}
       fill={fill ? computeColor(fill) : "none"}
       stroke={computeColor(color)}
+      strokeDashoffset={computeNumber(strokeDashoffset, "vs")}
       strokeWidth={strokeWidth}
       strokeDasharray={strokeDashArray}
       strokeLinecap="round"

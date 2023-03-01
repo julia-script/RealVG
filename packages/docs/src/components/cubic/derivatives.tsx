@@ -12,7 +12,11 @@ import {
 } from "../graph/utils";
 import { GraphContextProps } from "../graph/providers";
 import { solveCubic, solveCubic2 } from "math/src/cubic";
-import { Label } from "../graph/elements/Label";
+import {
+  Label,
+  radiansToRectEdge,
+  radiansToSquare,
+} from "../graph/elements/Label";
 import { getCos } from "math/src/quadratic";
 
 const useCoordControl = (
@@ -20,9 +24,12 @@ const useCoordControl = (
 ): WithPointerEvents & { pos: Point } => {
   const [dragging, setDragging] = useState(false);
   const [point, setPoint] = useState(initial);
+  const prevMousePos = useRef<Point>([0, 0]);
+
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
       (e.target as SVGGElement).setPointerCapture(e.pointerId);
+      prevMousePos.current = [e.clientX, e.clientY];
       setDragging(true);
     },
     [setDragging]
@@ -31,10 +38,13 @@ const useCoordControl = (
   const onPointerMove = useCallback(
     (e: React.PointerEvent, graph: GraphContextProps) => {
       if (!dragging) return;
-      const [offsetX, offsetY] = graph.computeSizeToCoordSpace([
-        e.movementX,
-        e.movementY,
-      ]);
+
+      const offset: Point = [
+        e.clientX - prevMousePos.current[0],
+        e.clientY - prevMousePos.current[1],
+      ];
+      prevMousePos.current = [e.clientX, e.clientY];
+      const [offsetX, offsetY] = graph.computeSizeToCoordSpace(offset);
       setPoint(([x, y]) => [x + offsetX, y + offsetY]);
     },
     [dragging, setPoint]
@@ -72,6 +82,7 @@ const useNavigator = (coordBox: BBox = { x: [0, 10], y: [10, 0] }) => {
   const bbox = useMemo(() => normalizeBBox(coordBox), [coordBox]);
   const [transform, setTransform] = useState(new DOMMatrix());
   const [dragging, setDragging] = useState(false);
+  const prevMousePos = useRef<Point>([0, 0]);
 
   const outCoordBox = useMemo(() => {
     const x = new DOMPoint(bbox.x[0], bbox.y[0]).matrixTransform(transform);
@@ -86,6 +97,7 @@ const useNavigator = (coordBox: BBox = { x: [0, 10], y: [10, 0] }) => {
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
       (e.target as SVGSVGElement).setPointerCapture(e.pointerId);
+      prevMousePos.current = [e.clientX, e.clientY];
       setDragging(true);
     },
     [setDragging]
@@ -94,10 +106,15 @@ const useNavigator = (coordBox: BBox = { x: [0, 10], y: [10, 0] }) => {
   const onPointerMove = useCallback(
     (e: React.PointerEvent, graph: GraphContextProps) => {
       if (!dragging) return;
-      const [offsetX, offsetY] = graph.computeSizeToCoordSpace([
-        e.movementX,
-        e.movementY,
-      ]);
+
+      const offset: Point = [
+        e.clientX - prevMousePos.current[0],
+        e.clientY - prevMousePos.current[1],
+      ];
+      prevMousePos.current = [e.clientX, e.clientY];
+
+      const [offsetX, offsetY] = graph.computeSizeToCoordSpace(offset);
+
       setTransform((prev) => {
         return prev.translate(-offsetX, -offsetY);
       });
@@ -177,6 +194,8 @@ export const CubicDerivatives = () => {
   const b = 1;
   const c = -2;
   const d = -0.5;
+
+  const rectRad = radiansToRectEdge(t * Math.PI * 2, 8, 4);
   return (
     <>
       <p>
@@ -184,7 +203,7 @@ export const CubicDerivatives = () => {
           type="range"
           min={0}
           max={1}
-          step={0.01}
+          step={0.001}
           value={t}
           onChange={(e) => setT(parseFloat(e.target.value))}
         />
@@ -234,6 +253,13 @@ export const CubicDerivatives = () => {
             return cubicCurve.at(t);
           }}
         /> */}
+        <Line start={[0, 0]} end={rectRad} color={0} />
+        <Mark
+          pos={[Math.cos(Math.PI * 2 * t), Math.sin(Math.PI * 2 * t)]}
+          color={0}
+          size={8}
+        />
+        <Mark pos={rectRad} color={0} size={8} />
 
         <Mark {...p0} />
         <Mark {...p1} />
@@ -263,18 +289,11 @@ export const CubicDerivatives = () => {
         <Label
           pos={v0v1v2}
           fontWeight="bold"
-          content={`(${v0v1v2[0].toFixed(2)}, ${v0v1v2[1].toFixed(2)})
-          \\frac{1}{2}`}
-          maxWidth={200}
-          direction={"n"}
-          distance={80}
+          content={`(${v0v1v2[0].toFixed(2)}, ${v0v1v2[1].toFixed(2)})`}
+          indicationLine={true}
+          color={1}
         />
         <Mark pos={v0v1v2} component="🌝" color={0} />
-
-        {/* <Mark pos={quadCurve.at(quadCurve.extremas()[0])} />
-        <Mark pos={quadCurve.at(quadCurve.extremas()[1])} /> */}
-
-        {/* <Mark pos={radiansOnUnitSquare(Math.PI * 2 * t)} /> */}
       </Graph>
 
       <div style={{ display: "flex", flexDirection: "row", gap: 6 }}>

@@ -35,17 +35,6 @@ export const Line = ({
       />
 
       {arrow && (
-        // <PolyLine
-        //   points={[
-        //     x2,
-        //     y2,
-        //     x2 - arrowSize * Math.cos(angle - HALF_PI),
-        //     y2 - arrowSize * Math.sin(angle - HALF_PI),
-        //     x2 - arrowSize * Math.cos(angle + HALF_PI),
-        //     y2 - arrowSize * Math.sin(angle + HALF_PI),
-        //   ].map((n) => `${n}vs`)}
-        //   fill={color}
-        // />
         <PolyLine
           width={width}
           color={computeColor(color)}
@@ -56,26 +45,8 @@ export const Line = ({
             `${y2}vs`,
             `${x2 + arrowSize * Math.cos(angle + Math.PI * 0.75)}vs`,
             `${y2 + arrowSize * Math.sin(angle + Math.PI * 0.75)}vs`,
-
-            // y2 + arrowSize * Math.sin(angle - Math.PI * 0.75),
-            // x2,
-            // y2,
-
-            // x2 + arrowSize * Math.cos(angle + Math.PI * 0.75),
-            // y2 + arrowSize * Math.sin(angle + Math.PI * 0.75),
           ]}
         />
-        // <polygon
-        //   points={[
-        //     x2,
-        //     y2,
-        //     x2 + arrowSize * Math.cos(angle - Math.PI * 0.75),
-        //     y2 + arrowSize * Math.sin(angle - Math.PI * 0.75),
-        //     x2 + arrowSize * Math.cos(angle + Math.PI * 0.75),
-        //     y2 + arrowSize * Math.sin(angle + Math.PI * 0.75),
-        //   ].join(",")}
-        //   fill={computeColor(color)}
-        // />
       )}
     </g>
   );

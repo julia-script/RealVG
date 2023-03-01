@@ -58,6 +58,14 @@ export const Grid = ({}: GridProps) => {
     };
   }, [theme]);
 
+  const xAxisColor = isArray(theme.grid.axis)
+    ? theme.grid.axis[0]
+    : theme.grid.axis;
+
+  const yAxisColor = isArray(theme.grid.axis)
+    ? theme.grid.axis[1]
+    : theme.grid.axis;
+
   return (
     <g>
       {ySteps.map((relY, i) => (
@@ -69,12 +77,14 @@ export const Grid = ({}: GridProps) => {
 
           <Label
             pos={[`0cs`, relY]}
+            direction={relY ? "w" : "sw"}
             content={`${round(relY, 2)}`}
             distance={6}
-            padding={0}
-            direction={relY ? "w" : "sw"}
-            stroke="none"
-            fill="none"
+            padding={4}
+            boxed={false}
+            arrow={false}
+            strokeColor={xAxisColor}
+            strokeWidth={gridLinesStyle.width}
           />
         </g>
       ))}
@@ -90,21 +100,23 @@ export const Grid = ({}: GridProps) => {
               content={`${round(relX, 2)}`}
               direction="s"
               distance={6}
-              padding={0}
-              stroke="none"
-              fill="none"
+              padding={4}
+              boxed={false}
+              arrow={false}
+              strokeColor={yAxisColor}
+              strokeWidth={gridLinesStyle.width}
             />
           )}
         </g>
       ))}
       <PolyLine
         points={[0, startY, 0, endY]}
-        color={isArray(theme.grid.axis) ? theme.grid.axis[1] : theme.grid.axis}
+        color={yAxisColor}
         width={theme.grid.axisStrokeWidth}
       />
       <PolyLine
         points={[startX, 0, endX, 0]}
-        color={isArray(theme.grid.axis) ? theme.grid.axis[0] : theme.grid.axis}
+        color={xAxisColor}
         width={theme.grid.axisStrokeWidth}
       />
     </g>

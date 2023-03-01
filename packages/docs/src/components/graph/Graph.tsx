@@ -100,6 +100,7 @@ export const Graph = ({
     const observer = new ResizeObserver(() => {
       const width = graphRef.current?.clientWidth || 0;
       const height = graphRef.current?.clientHeight || 0;
+
       set(width, height);
     });
     observer.observe(graphRef.current);

@@ -1,4 +1,4 @@
-import { isArray, round } from "lodash";
+import { isArray, isNaN, isNumber, round } from "lodash";
 import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useGraph } from "../providers";
 import { Color } from "../utils/styles";
@@ -7,6 +7,7 @@ import { TextProps, Text } from "./Text";
 import { Point } from "math";
 import { Rect } from "./Rect";
 import { Line } from "./Line";
+import { Mark } from "./Mark";
 
 const CardinalRadians = {
   n: -Math.PI / 2,
@@ -19,64 +20,53 @@ const CardinalRadians = {
   nw: (-3 * Math.PI) / 4,
 };
 export type LabelProps = {
+  labelPos?: NumberUnitPoint;
   radius?: NumberUnit;
   direction?: "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "nw" | number;
   strokeWidth?: NumberUnit;
-  stroke?: Color;
+  strokeColor?: Color;
   distance?: NumberUnit;
-  maxWidth?: NumberUnit;
   padding?: NumberUnit | NumberUnitPoint;
   arrow?: boolean;
+  indicationLine?: boolean;
+  indicationLineOffset?: NumberUnit;
+  boxed?: boolean;
   color?: Color;
-  fill?: Color;
+  backgroundColor?: Color;
   textColor?: Color;
   content?: string;
   lineHeight?: number;
+
   alignment?: "left" | "center" | "right";
-} & TextProps;
+} & Omit<TextProps, "children">;
 
-// void ellipticalDiscToSquare(double u, double v, double& x, double& y)
-// {
-//     double u2 = u * u;
-//     double v2 = v * v;
-//     double twosqrt2 = 2.0 * sqrt(2.0);
-//     double subtermx = 2.0 + u2 - v2;
-//     double subtermy = 2.0 - u2 + v2;
-//     double termx1 = subtermx + u * twosqrt2;
-//     double termx2 = subtermx - u * twosqrt2;
-//     double termy1 = subtermy + v * twosqrt2;
-//     double termy2 = subtermy - v * twosqrt2;
-//     x = 0.5 * sqrt(termx1) - 0.5 * sqrt(termx2);
-//     y = 0.5 * sqrt(termy1) - 0.5 * sqrt(termy2);
-
-// }
-const twosqrt2 = 2.0 * Math.sqrt(2.0);
-const ellipticalDiscToSquare = (point: Point): Point => {
-  const [u, v] = point;
-  const u2 = u * u;
-  const v2 = v * v;
-
-  const subtermx = 2.0 + u2 - v2;
-  const subtermy = 2.0 - u2 + v2;
-  const termx1 = subtermx + u * twosqrt2;
-  const termx2 = subtermx - u * twosqrt2;
-  const termy1 = subtermy + v * twosqrt2;
-  const termy2 = subtermy - v * twosqrt2;
-  const x = 0.5 * Math.sqrt(termx1) - 0.5 * Math.sqrt(termx2);
-  const y = 0.5 * Math.sqrt(termy1) - 0.5 * Math.sqrt(termy2);
-  return [x, y];
-};
-
-const radiansToSquare = (radians: number): Point => {
+export const radiansToRectEdge = (
+  radians: number,
+  width: number,
+  height: number
+): Point => {
+  if (width === 0 || height === 0) {
+    return [0, 0];
+  }
   const x = Math.cos(radians);
   const y = Math.sin(radians);
+
   const xAbs = Math.abs(x);
   const yAbs = Math.abs(y);
 
-  if (xAbs > yAbs) {
-    return [Math.sign(x), y * Math.SQRT2];
+  const halfWidth = width / 2;
+  const halfHeight = height / 2;
+
+  const ratio = width / height;
+  const invertedRatio = height / width;
+
+  if (xAbs / ratio > yAbs) {
+    const xSign = Math.sign(x);
+    return [halfWidth * xSign, (y / x) * halfHeight * ratio * xSign];
   }
-  return [x * Math.SQRT2, Math.sign(y)];
+
+  const ySign = Math.sign(y);
+  return [(x / y) * halfWidth * invertedRatio * ySign, halfHeight * ySign];
 };
 
 export const unitCircleToUnitSquare = (point: Point): Point => {
@@ -92,20 +82,23 @@ const trimLineBreaks = (text: string) => {
   return text.replace(/^\s+|\s+$/g, "");
 };
 export const Label = ({
-  children,
-  pos,
-  maxWidth = 200,
+  pos = [0, 0],
+  labelPos,
   padding = [10, 10],
   content = "",
   lineHeight = 1.2,
   fontFamily,
   fontSize,
   fontWeight,
-  color,
-  fill,
+  color, // text color
+  arrow = true,
+  backgroundColor,
   textColor,
-  stroke,
-  strokeWidth,
+  strokeColor,
+  strokeWidth = 2,
+  indicationLine = true,
+  indicationLineOffset = 20,
+  boxed = true,
   alignment = "center",
   direction = "n",
   distance = 40,
@@ -113,149 +106,154 @@ export const Label = ({
   ...rest
 }: LabelProps) => {
   const [[width, height], setSize] = useState<Point>([0, 0]);
-  const contentRef = React.useRef<HTMLDivElement>(null);
-  const textRef = React.useRef<SVGTextElement>(null);
+
+  const contentRef = React.useRef<SVGTextElement>(null);
   const {
     computeCoord,
     computeNumber,
-    theme,
-    computeColor,
     computeSize,
     width: graphWidth,
   } = useGraph();
 
-  const [x, y] = pos ? computeCoord(pos) : [0, 0];
+  const indicationLineOffsetVs = computeNumber(indicationLineOffset, "vs");
+
+  const {
+    labelPos: [labelX, labelY],
+    targetPos: [targetX, targetY],
+    attachingPoint,
+    distanceVs,
+  } = useMemo(() => {
+    const [targetX, targetY] = computeCoord(pos);
+
+    if (labelPos) {
+      const [labelX, labelY] = computeCoord(labelPos);
+      const directionInRadians = Math.atan2(labelY - targetY, labelX - targetX);
+
+      let attachingPoint = radiansToRectEdge(directionInRadians, width, height);
+
+      attachingPoint = [labelX - attachingPoint[0], labelY - attachingPoint[1]];
+      let distanceVs = Math.sqrt(
+        Math.pow(attachingPoint[0] - targetX, 2) +
+          Math.pow(attachingPoint[1] - targetY, 2)
+      );
+
+      return {
+        labelPos: [labelX, labelY],
+        targetPos: [targetX, targetY],
+        attachingPoint,
+        distanceVs,
+      };
+    }
+
+    const directionInRadians = isNumber(direction)
+      ? direction
+      : CardinalRadians[direction];
+    const distanceVs = computeNumber(distance, "vs");
+    let attachingPoint = radiansToRectEdge(directionInRadians, width, height);
+    const [dirX, dirY] = [
+      Math.cos(directionInRadians),
+      Math.sin(directionInRadians),
+    ];
+
+    const [labelX, labelY] = [
+      attachingPoint[0] + targetX + dirX * distanceVs,
+      attachingPoint[1] + targetY + dirY * distanceVs,
+    ];
+    attachingPoint = [labelX - attachingPoint[0], labelY - attachingPoint[1]];
+
+    return {
+      attachingPoint,
+      labelPos: [labelX, labelY],
+      targetPos: [targetX, targetY],
+      distanceVs,
+    };
+  }, [direction, labelPos, pos, computeCoord, width, height, distance]);
 
   const [xPadding, yPadding] = computeSize(
     isArray(padding) ? padding : [padding, padding],
     "vs"
   );
 
-  const computedTextColor = computeColor(textColor ?? theme.fontColor);
-  const maxWidthPx = computeNumber(maxWidth, "vs");
-
-  const fontSizePx = computeNumber(fontSize || theme.fontSize, "vs");
-  const distanceVs = computeNumber(distance, "vs");
-
   useLayoutEffect(() => {
-    if (!textRef.current) {
+    if (!contentRef.current) {
       return;
     }
-    textRef.current.innerHTML = "";
+    const { width, height } = contentRef.current.getBoundingClientRect();
+    setSize([width + xPadding * 2, height + yPadding * 2]);
+  }, [contentRef.current, content, fontSize, lineHeight, graphWidth]);
 
-    const contentArray = content
-      .split("\n")
-      .map((line) => line.trim().split(" "));
-    const createTspan = () => {
-      const tspan = document.createElementNS(
-        "http://www.w3.org/2000/svg",
-        "tspan"
-      );
-      tspan.setAttribute("x", "0");
+  const arrowEndPos = useMemo(() => {
+    const direction = Math.atan2(
+      targetY - attachingPoint[1],
+      targetX - attachingPoint[0]
+    );
 
-      tspan.setAttribute("dy", `${lineHeight}em`);
-      tspan.setAttribute("dominant-baseline", "text-after-edge");
-      tspan.setAttribute("text-anchor", "middle");
-      if (alignment === "left") {
-        tspan.setAttribute("text-anchor", "start");
-      } else if (alignment === "right") {
-        tspan.setAttribute("text-anchor", "end");
-      } else {
-        tspan.setAttribute("text-anchor", "middle");
-      }
-
-      return tspan;
-    };
-
-    let lineCount = 0;
-    let contentWidth = 0;
-    const maxLineWidth = maxWidthPx - 2 * xPadding;
-
-    contentArray.forEach((line, i) => {
-      let currentTspan: SVGTSpanElement = createTspan();
-      textRef.current?.append(currentTspan);
-      lineCount++;
-      line.map((word) => {
-        const textNode = document.createTextNode(i === 0 ? word : ` ${word}`);
-        currentTspan.append(textNode);
-        const { width } = currentTspan.getBBox();
-        if (width > contentWidth) contentWidth = Math.min(maxLineWidth, width);
-
-        if (width < maxLineWidth) {
-          return;
-        }
-        lineCount++;
-        textNode.remove();
-        currentTspan = createTspan();
-        currentTspan.append(word);
-        textRef.current?.append(currentTspan);
-      });
-    });
-
-    setSize([
-      contentWidth + xPadding * 2,
-      lineCount * lineHeight * fontSizePx + yPadding * 2,
-    ]);
-  }, [
-    contentRef.current,
-    content,
-    fontSize,
-    lineHeight,
-    maxWidthPx,
-    graphWidth,
-  ]);
-
-  let textX = xPadding;
-  if (alignment === "right") {
-    textX = width - xPadding;
-  } else if (alignment === "center") {
-    textX = width / 2;
-  }
-
-  const directionInRadians = useMemo(() => {
-    if (typeof direction === "number") {
-      return direction;
-    }
-    return CardinalRadians[direction];
-  }, [direction]);
-
-  const [unitX, unitY] = radiansToSquare(directionInRadians);
-
-  const [halfX, halfY] = [width / 2, height / 2];
-
-  const [blockX, blockY] = [
-    unitX * (halfX + distanceVs) - halfX,
-    unitY * (halfY + distanceVs) - halfY,
-  ];
+    return [
+      targetX - Math.cos(direction) * indicationLineOffsetVs,
+      targetY - Math.sin(direction) * indicationLineOffsetVs,
+    ];
+  }, [indicationLineOffsetVs, distanceVs, targetX, targetY]);
   return (
-    <g transform={`translate(${x} ${y})`}>
-      <Line
-        end={["0vs", "0vs"]}
-        start={[`${unitX * distanceVs}vs`, `${unitY * distanceVs}vs`]}
-        color={stroke}
-        width={strokeWidth}
-      />
-      <g transform={`translate(${blockX} ${blockY})`}>
-        <Rect
-          pos={[`0vs`, `0vs`]}
-          size={[`${width}vs`, `${height}vs`]}
-          radius={radius}
-          strokeWidth={strokeWidth}
-          color={stroke}
-          fill={fill}
+    <>
+      {indicationLine && distanceVs > indicationLineOffsetVs && (
+        <Line
+          start={[`${attachingPoint[0]}vs`, `${attachingPoint[1]}vs`]}
+          end={[`${arrowEndPos[0]}vs`, `${arrowEndPos[1]}vs`]}
+          color={strokeColor || color}
+          width={strokeWidth}
+          arrow={arrow}
         />
-        <text
-          transform={`translate(${textX} ${yPadding})`}
-          fontSize={fontSizePx}
-          fontFamily={fontFamily || theme.fontFamily}
-          fontWeight={fontWeight || theme.fontWeight}
-          fill={computedTextColor}
-          ref={textRef}
-          width={width}
-          height={height}
+      )}
+      <g
+        transform={useMemo(() => {
+          return `translate(${labelX - width / 2} ${labelY - height / 2})`;
+        }, [width, height, labelX, labelY])}
+      >
+        {boxed && (
+          <Rect
+            pos={[`0vs`, `0vs`]}
+            size={[`${width}vs`, `${height}vs`]}
+            radius={radius}
+            strokeWidth={strokeWidth}
+            color={strokeColor || color}
+            fill={backgroundColor}
+          />
+        )}
+        <Text
+          transform={useMemo(() => {
+            let textX = xPadding;
+            if (alignment === "right") {
+              textX = width - xPadding;
+            } else if (alignment === "center") {
+              textX = width / 2;
+            }
+            return `translate(${textX} ${yPadding})`;
+          }, [width, xPadding, yPadding, alignment])}
+          fontSize={fontSize}
+          fontFamily={fontFamily}
+          fontWeight={fontWeight}
+          color={color}
           {...rest}
-        />
+        >
+          <tspan
+            x="0"
+            dy="1em"
+            ref={contentRef}
+            textAnchor={useMemo(() => {
+              if (alignment === "left") {
+                return "start";
+              } else if (alignment === "right") {
+                return "end";
+              } else {
+                return "middle";
+              }
+            }, [alignment])}
+            alignmentBaseline="after-edge"
+          >
+            {content}
+          </tspan>
+        </Text>
       </g>
-    </g>
+    </>
   );
 };
