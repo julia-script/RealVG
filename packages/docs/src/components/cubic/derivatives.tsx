@@ -11,13 +11,13 @@ import {
   WithPointerEvents,
 } from "../graph/utils";
 import { GraphContextProps } from "../graph/providers";
-import { solveCubic, solveCubic2 } from "math/src/cubic";
-import {
-  Label,
-  radiansToRectEdge,
-  radiansToSquare,
-} from "../graph/elements/Label";
+import { solveCubic2 } from "math/src/cubic";
+import { Label } from "../graph/elements/Label";
 import { getCos } from "math/src/quadratic";
+import { radiansToRectEdge } from "../graph/elements/LabelContainer";
+import { LabelBlock } from "../graph/elements/LabelBlock";
+import "katex/dist/katex.min.css";
+import { InlineMath, BlockMath } from "react-katex";
 
 const useCoordControl = (
   initial: Point
@@ -143,10 +143,11 @@ export const CubicDerivatives = () => {
   // const p1 = useCoordControl([5, 7]);
   // const p2 = useCoordControl([8, 2]);
   // const p3 = useCoordControl([5, 2]);
-  const p0 = useCoordControl([1, 2]);
-  const p1 = useCoordControl([3, 7]);
-  const p2 = useCoordControl([7, 7]);
-  const p3 = useCoordControl([9, 2]);
+  const p0 = useCoordControl([1, 3]);
+  const p1 = useCoordControl([3, 6]);
+  const p2 = useCoordControl([7, 1]);
+  const p3 = useCoordControl([9, 3]);
+
   const [t, setT] = useState(0.5);
   const v0 = useMemo<Point>(() => {
     return [lerp(p0.pos[0], p1.pos[0], t), lerp(p0.pos[1], p1.pos[1], t)];
@@ -195,7 +196,6 @@ export const CubicDerivatives = () => {
   const c = -2;
   const d = -0.5;
 
-  const rectRad = radiansToRectEdge(t * Math.PI * 2, 8, 4);
   return (
     <>
       <p>
@@ -209,15 +209,13 @@ export const CubicDerivatives = () => {
         />
         t: {t}
       </p>
-      <Graph width={"100%"} height={"400px"} padding={[10, 10]} {...navigator}>
+      <Graph width={"100%"} height={"500px"} padding={[10, 10]} {...navigator}>
         <PolyLine
           color={0}
           width={2}
           strokeStyle={"dashed"}
           points={[...p0.pos, ...p1.pos, ...p2.pos, ...p3.pos]}
         />
-
-        <Parametric tLimits={[0, 10]} xy={getCos} />
 
         {/* <Parametric
           tLimits={[0, 1]}
@@ -246,20 +244,6 @@ export const CubicDerivatives = () => {
           color={3}
           width={6}
         />
-        {/* <BBoxRect bbox={bbox} color={0} strokeStyle={"dotted"} /> */}
-        {/* <Parametric
-          tLimits={[0, 1]}
-          xy={(t) => {
-            return cubicCurve.at(t);
-          }}
-        /> */}
-        <Line start={[0, 0]} end={rectRad} color={0} />
-        <Mark
-          pos={[Math.cos(Math.PI * 2 * t), Math.sin(Math.PI * 2 * t)]}
-          color={0}
-          size={8}
-        />
-        <Mark pos={rectRad} color={0} size={8} />
 
         <Mark {...p0} />
         <Mark {...p1} />
@@ -286,14 +270,26 @@ export const CubicDerivatives = () => {
         <Mark pos={v0v1} color={0} size={8} />
         <Mark pos={v1v2} color={0} size={8} />
 
-        <Label
+        <LabelBlock
           pos={v0v1v2}
-          fontWeight="bold"
-          content={`(${v0v1v2[0].toFixed(2)}, ${v0v1v2[1].toFixed(2)})`}
-          indicationLine={true}
-          color={1}
-        />
-        <Mark pos={v0v1v2} component="🌝" color={0} />
+          labelPos={[5, 8]}
+          color={"#000"}
+          width={500}
+          distance={100}
+          backgroundColor={0}
+          strokeColor={5}
+        >
+          {/* {`(${v0v1v2[0].toFixed(2)}, ${v0v1v2[1].toFixed(2)})`} */}
+          {/* <br /> */}
+          {/* <br /> */}
+          Cubic Bézier Curve:
+          <BlockMath>{`{\\mathbf {B} (t)=(1-t)^{3}\\mathbf {P} _{0}+3(1-t)^{2}t\\mathbf {P} _{1}+3(1-t)t^{2}\\mathbf {P} _{2}+t^{3}\\mathbf {P} _{3},\\ 0\\leq t\\leq 1.}`}</BlockMath>
+          <BlockMath>{`t=${t}`}</BlockMath>
+          <BlockMath>{`B(t) = (${v0v1v2[0].toFixed(2)}, ${v0v1v2[1].toFixed(
+            2
+          )})`}</BlockMath>
+        </LabelBlock>
+        <Mark pos={v0v1v2} component="🤌" color={0} />
       </Graph>
 
       <div style={{ display: "flex", flexDirection: "row", gap: 6 }}>
@@ -309,12 +305,6 @@ export const CubicDerivatives = () => {
             bbox={{
               x: [0, 1],
               y: [10, 0],
-            }}
-          />
-          <Parametric
-            tLimits={[0, 10]}
-            xy={(t) => {
-              return [t, Math.cos(t)];
             }}
           />
 
